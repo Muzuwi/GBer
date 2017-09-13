@@ -1,4 +1,6 @@
 #include "File.hpp"
+#include "../Math/Math.hpp"
+#include <iostream>
 namespace File{
 		unsigned int fileSize = 0;
 
@@ -7,18 +9,22 @@ namespace File{
             return (boost::filesystem::exists(p) & boost::filesystem::is_regular_file(p)) ? true : false;
         }
 
-        std::vector<char> loadFromFile(std::string path){
+        std::vector<unsigned char> loadFromFile(std::string path){
         	std::ifstream file;
-        	std::vector<char> rom;
-        	file.open(path);
-			file.seekg(0, file.end);
+            std::vector<char> temp;
+            file.open(path, std::ios::binary);
+            file.seekg(0, file.end);
             fileSize = file.tellg();
             file.seekg(0, file.beg);
             
-            rom.resize(fileSize);
-            file.read(&rom[0], fileSize);
+            temp.resize(fileSize);
+            file.read(&temp[0], fileSize);
             file.close();
-
+            std::cout << fileSize << " ";
+            std::cout << Math::decHex(temp[0x90]) << " ";
+            //rom.resize(fileSize);
+            std::vector<unsigned char> rom(temp.begin(), temp.end());
+            std::cout << Math::decHex(rom[0x90]) << "\n";
             return rom;
         }
 }

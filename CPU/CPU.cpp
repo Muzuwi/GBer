@@ -9,7 +9,14 @@ namespace CPU{
 	std::vector<char16_t> Stack;
 
 	bool cycle(){
+		/* 
+		 - Zero out registers
+		 - Get current opcode
+		 - Look up opcode
+		 - Execute opcode
+		*/
 
+		return true;
 	}
 	
 }

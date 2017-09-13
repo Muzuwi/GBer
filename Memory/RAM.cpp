@@ -3,6 +3,8 @@
 #include <map>
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
+#include <iostream>
+#include "../Math/Math.hpp"
 namespace RAM{
 
 	/* ROM0(0x4000);		// Bank #0
@@ -17,7 +19,7 @@ namespace RAM{
 	   EMP1(0x0034);		// Empty #1 
 	   IRAM(0x0080);		// Internal RAM */
 
-	std::vector<char>RAM(0x10000);
+	std::vector<unsigned char>RAM(0x10000);
 
 	/*
 		Reads a byte from RAM
@@ -37,7 +39,7 @@ namespace RAM{
 		Write byte to RAM
 		Arguments: Address, byte to write
 	*/
-	bool write(char16_t address, char byte){
+	bool write(char16_t address, unsigned char byte){
 		if(address > 0xFFFF || address < 0x0){
 			return false;
 		}else{ 
@@ -83,7 +85,7 @@ namespace RAM{
 		Insert the contents of a vector into the RAM (For loading the ROM, bootrom, whatever)
 		Arguments: Vector<char>, Destination address, length of block to insert
 	*/
-	bool insert(std::vector<char> in, char16_t dest, unsigned int length){
+	bool insert(std::vector<unsigned char> in, char16_t dest, unsigned int length){
 		if(in.size() == 0 || dest > 0xFFFF || dest < 0x0 || (dest + length) > 0xFFFF){
 			return false;
 		}
@@ -94,53 +96,25 @@ namespace RAM{
 		return true;
 	}
 
-    std::string dechex(int num){   
-    		std::map<int, char> Hex;
-    		Hex[1]  = '1'; 
-    		Hex[2]  = '2'; 
-    		Hex[3]  = '3'; 
-    		Hex[4]  = '4'; 
-    		Hex[5]  = '5'; 
-    		Hex[6]  = '6'; 
-    		Hex[7]  = '7'; 
-    		Hex[8]  = '8'; 
-    		Hex[9]  = '9'; 
-    		Hex[10] = 'A';
-    		Hex[11] = 'B';
-    		Hex[12] = 'C';
-    		Hex[13] = 'D';
-    		Hex[14] = 'E';
-    		Hex[15] = 'F';
-
-            if(num == 0){
-                return "00";
-            }
-            std::string text = "";
-            int b = num, current = 0, a = 0;
-            do{
-                a = b % 16;
-                text += Hex[a];
-                b /= 16;
-                current++;
-            }while(b != 0);
-            std::reverse(text.begin(), text.end());
-            return text;
-    }
-
-
-
 	/*
 		Dumps the memory to a file
 		Arguments: file name
 	*/
 	bool dump(std::string name){
 		std::ofstream file;
-		file.open(name);
+		file.open(name, std::ios::binary);
 		for(unsigned int i = 0; i < 0x10000; i++){
-			if(i % 32 == 0){
-				file << "\n";
+			if(i == 0){
+				file << "$" << Math::decHex(i) << " | ";
 			}
-			file << dechex(int(RAM[i]));
+			if(i % 32 == 0 && i != 0){
+				file << "\n";
+				file << "$" << Math::decHex(i) << " | ";
+			}
+			if(i % 2 == 0 ){
+				file << " ";
+			}
+			file << Math::decHex(RAM[i]);
 		}
 		file.close();
 		return true;

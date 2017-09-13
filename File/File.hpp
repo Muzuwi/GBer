@@ -5,5 +5,5 @@
 
 namespace File{
 	bool fileExists(std::string);
-	std::vector<char> loadFromFile(std::string);
+	std::vector<unsigned char> loadFromFile(std::string);
 }
