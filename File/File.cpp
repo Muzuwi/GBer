@@ -20,11 +20,11 @@ namespace File{
             temp.resize(fileSize);
             file.read(&temp[0], fileSize);
             file.close();
-            std::cout << fileSize << " ";
-            std::cout << Math::decHex(temp[0x90]) << " ";
+            //std::cout << fileSize << " ";
+            //std::cout << Math::decHex(temp[0x90]) << " ";
             //rom.resize(fileSize);
             std::vector<unsigned char> rom(temp.begin(), temp.end());
-            std::cout << Math::decHex(rom[0x90]) << "\n";
+            //std::cout << Math::decHex(rom[0x90]) << "\n";
             return rom;
         }
 }

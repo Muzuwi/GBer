@@ -10,7 +10,6 @@ namespace CPU{
 
 	bool cycle(){
 		/* 
-		 - Zero out registers
 		 - Get current opcode
 		 - Look up opcode
 		 - Execute opcode
