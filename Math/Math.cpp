@@ -43,4 +43,15 @@ namespace Math{
          
          return (text.size() <= 0) ? "?" : text; 
     }
+/*
+    template<class T>
+    T pow(T a, unsigned int b){
+        T ret = a;
+        unsigned int count = 1;
+        do{
+            ret *= a;
+            count++;
+        }while(count != b);
+        return ret;
+    }*/
 }

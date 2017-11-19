@@ -5,9 +5,6 @@
 #include "Config/Config.hpp"
 
 int main(int argc, char* argv[]){
-	if(argc < 2){
-		return -1;
-	}
 	Config::setDefaults();
 	Config::parseArgs(argv, argc);
 	if(Config::getKeyState("ROM_LOCATION") == ""){
