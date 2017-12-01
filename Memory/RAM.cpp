@@ -35,39 +35,6 @@ namespace RAM{
 
 	}
 
-
-	/*
-		Reads a sequence of bytes from RAM
-		Arguments: memory address to read from, byte count
-
-		DOESN'T ACTUALLY WORK FOR 2+ BYTES
-	*/
-
-	char16_t readSeq(char16_t address, unsigned int count){
-		if(address > 0xFFFF || address < 0x0 || address + count > 0xFFFF){
-			// Most likely unspecified
-			return 0xFF;
-		}else{
-			char16_t op = 0;
-			int mult = 0x100, pos = 0;
-			unsigned int pow = 1;
-
-			while(pow + 1 < count){
-				mult *= 0x100;
-				pow++;
-			}
-
-			do{
-				std::cout << "\n---" << Math::decHex(RAM[address + pos]) << "---\n";
-				op += RAM[address + pos]*mult;
-				pos++;
-				mult /= 0x100;
-				std::cout << "\n" << Math::decHex(op) << " " << mult << " \n";
-			}while(pos < count);
-			return op;
-		}
-
-	}
 	/*
 		Write byte to RAM
 		Arguments: Address, byte to write
