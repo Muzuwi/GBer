@@ -1,9 +1,10 @@
-#include "RAM.hpp"
+#include <iostream>
 #include <fstream>
+#include <string>
 #include <map>
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
-#include <iostream>
+#include "RAM.hpp"
 #include "../Math/Math.hpp"
 namespace RAM{
 
@@ -32,7 +33,6 @@ namespace RAM{
 		}else{
 			return RAM[address];
 		}
-
 	}
 
 	/*
@@ -42,7 +42,7 @@ namespace RAM{
 	bool write(char16_t address, unsigned char byte){
 		if(address > 0xFFFF || address < 0x0){
 			return false;
-		}else{ 
+		}else{
 			RAM[address] = byte;
 			return true;
 		}
@@ -52,7 +52,7 @@ namespace RAM{
 		Copy a block of bytes to another location in RAM
 		Arguments: Source address, Destination address, length of block to copy
 	*/	
-	bool copy(char16_t source, char16_t dest, unsigned int length){ 
+	bool copy(char16_t source, char16_t dest, unsigned int length){
 		if(source > 0xFFFF || source < 0x0 || dest > 0xFFFF || dest < 0x0 || length < 0x0 ||
 		  (source + length) > 0xFFFF || (dest + length) > 0xFFFF ){
 				return false;
@@ -68,14 +68,14 @@ namespace RAM{
 		Move a block of bytes to another location in RAM
 		Arguments: Source address, Destination address, length of block to move
 	*/	
-	bool move(char16_t source, char16_t dest, unsigned int length){ 
-		if(source > 0xFFFF || source < 0x0 || dest > 0xFFFF || dest < 0x0 ||
+	bool move(char16_t source, char16_t dest, unsigned int length){
+			if(source > 0xFFFF || source < 0x0 || dest > 0xFFFF || dest < 0x0 ||
 		  (source + length) > 0xFFFF || (dest + length) > 0xFFFF ){
 				return false;
 		}else{
 			for(unsigned int i = 0; i <= length; i++){
 				RAM[dest + i] = RAM[source + i];
-				RAM[source + i] = 0x0;	// Not sure if this should be 0x0, or 0xFF
+				RAM[source + i] = 0x0;	    // Not sure if this should be 0x0, or 0xFF
 			}
 			return true;
 		}
@@ -111,7 +111,7 @@ namespace RAM{
 				file << "\n";
 				file << "$" << Math::decHex(i) << " | ";
 			}
-			if(i % 2 == 0 ){
+			if(i % 2 == 0){
 				file << " ";
 			}
 			file << Math::decHex(RAM[i]);
@@ -119,4 +119,4 @@ namespace RAM{
 		file.close();
 		return true;
 	}
-}
+}  // namespace RAM

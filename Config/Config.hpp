@@ -5,4 +5,4 @@ namespace Config{
 	std::string getKeyState(std::string);
 	void setKeyState(std::string, std::string);
 	void setDefaults();
-}
+}  // namespace Config
