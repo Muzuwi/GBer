@@ -8,6 +8,7 @@ namespace Math{
         Returns hex form of given integer
     */
     std::string decHex(int num){
+         //  std::cout << "\n[Math.cpp] decHex(" << num << ");\n";
          std::map<int, char> Hex;
          Hex[0]  = '0';
          Hex[1]  = '1';

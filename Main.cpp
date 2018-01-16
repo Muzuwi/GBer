@@ -3,6 +3,7 @@
 #include "Memory/RAM.hpp"
 #include "Math/Math.hpp"
 #include "Config/Config.hpp"
+#include "CPU/CPU.hpp"
 
 int main(int argc, char* argv[]){
 	Config::setDefaults();
@@ -22,6 +23,8 @@ int main(int argc, char* argv[]){
 	RAM::insert(rom, 0x0150, 0x3EB0);
 	RAM::insert(bootRom, 0x0, 0x100);
 	RAM::dump("memdmp.txt");
+	//  std::cout << "Starting CPU";
+	//  CPU::start();
 
 	return 0;
 }

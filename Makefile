@@ -10,3 +10,6 @@ gber: $(SRC)
 
 clean:
 	$(RM) $(OUTPUT)   
+
+debug:
+	g++ -Wall -std=c++17 -static -E $(SRC) $(LIB)
