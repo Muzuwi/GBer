@@ -7,7 +7,9 @@
 
 int main(int argc, char* argv[]){
 	Config::setDefaults();
-	Config::parseArgs(argv, argc);
+	if(!Config::parseArgs(argv, argc)){
+		return 0;
+	}
 	if(Config::getKeyState("ROM_LOCATION") == ""){
 		return -1;
 	}
@@ -19,12 +21,13 @@ int main(int argc, char* argv[]){
 	std::vector<unsigned char> rom = File::loadFromFile(Config::getKeyState("ROM_LOCATION"));
 	std::cout << "File size " << rom.size() << " bytes\n";
 	std::cout << "Boot rom " << bootRom.size() << " bytes\n";
-	std::cout << "Trying to insert into mem...\n";
+	std::cout << "Trying to insert into mem..\n";
 	RAM::insert(rom, 0x0150, 0x3EB0);
 	RAM::insert(bootRom, 0x0, 0x100);
+	std::cout << "Dumping initial RAM contents..\n";
 	RAM::dump("memdmp.txt");
-	//  std::cout << "Starting CPU";
-	//  CPU::start();
+	std::cout << "Starting CPU\n";
+	CPU::start();
 
 	return 0;
 }

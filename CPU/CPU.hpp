@@ -17,4 +17,5 @@ namespace CPU{
 	inline void writeHL(char16_t);
 	inline void writeBC(char16_t);
 	inline void writeDE(char16_t);
+	inline void flagMask(int);
 }  // namespace CPU

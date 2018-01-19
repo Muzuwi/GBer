@@ -20,6 +20,7 @@ namespace Config{
 				std::cout << "    -rom 				Specify the ROM file to load\n";
 				std::cout << "    -debug				Enables debugging features\n";
 				std::cout << "    -ver				Prints the version of GBer\n";
+				return false;
 			}else if(!std::string("-bootrom").compare(argv[i]) && (argv[i+1] != NULL)){
 				setKeyState("BOOTROM_LOCATION", argv[i+1]);
 			}else if(!std::string("-debug").compare(argv[i])){
@@ -42,7 +43,6 @@ namespace Config{
 	void setDefaults(){
 		setKeyState("DEBUG_MODE", "false");
 		setKeyState("BOOTROM_LOCATION", "DMG_ROM.bin");
-		//  setKeyState("DEBUG_MODE", false);
-		//  setKeyState("DEBUG_MODE", false);
+		setKeyState("ROM_LOCATION", "pkb.gb");
 	}
 }  // namespace Config
