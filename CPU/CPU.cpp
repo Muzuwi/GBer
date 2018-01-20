@@ -94,7 +94,7 @@
 					RAM::write(a, (RAM::read(a) & ~(1 << 7)) | (bit0 << 7)); \
 					if(RAM::read(a) == 0){ setZ; }
 
-//  Bit testing120
+//  Bit testing
 #define BIT_X_R(a,b) (Registers.b & (1 << a))
 #define BIT_X_D(a,b) (b & (1 << a))
 
@@ -105,6 +105,12 @@
 #define LD_R_R(a, b) CPU::Registers.a = CPU::Registers.b
 #define LD_R_D(a, b) CPU::Registers.a = b
 #define LD_D_R(a, b) RAM::write(a, CPU::Registers.b)
+#define LDI_D_R(a, b) RAM::write(a, CPU::Registers.b); writeHL(readHL() + 1)
+#define LDI_R_D(a, b) CPU::Registers.a = RAM::read(b); writeHL(readHL() + 1)
+#define LDD_D_R(a, b) RAM::write(a, CPU::Registers.b); writeHL(readHL() - 1)
+#define LDD_R_D(a, b) CPU::Registers.a = RAM::read(b); writeHL(readHL() - 1)
+#define JR_CC_N(a, b) if(a){ CPU::Registers.PC += b; }
+#define JR_N(a)	CPU::Registers.PC += a
 
 //  Arithmetic
 #define ADD_R_R(a, b) CPU::Registers.a += CPU::Registers.b
@@ -120,6 +126,14 @@
 #define SBC_R(a) CPU::Registers.A = CPU::Registers.A - CPU::Registers.a - readC
 #define SBC_D(a) CPU::Registers.A = CPU::Registers.A - a - readC
 
+#define CP_R(a)	if(CPU::Registers.A - CPU::Registers.a == 0){ setZ; } \
+				else if(CPU::Registers.A < CPU::Registers.a){ setC; } 
+#define CP_D(a) if(CPU::Registers.A - a == 0){ setZ; } \
+				else if(CPU::Registers.A < a){ setC; } 
+//																													!!!! IMPORTANT: DO HALF CARRY FLAG
+
+
+
 //  Bitwise operations
 #define AND_R(a) CPU::Registers.A &= CPU::Registers.a
 #define AND_D(a) CPU::Registers.A &= a
@@ -129,6 +143,8 @@
 #define XOR_D(a) CPU::Registers.A ^= a
 
 //  For convenience, value in memory pointed to by register XX
+//  OH GOD WHY DOES THIS HAPPEN TO ME
+//  THIS IS PROBABLY VERY WRONG
 #define BC_p RAM::read(CPU::readBC())
 #define DE_p RAM::read(CPU::readDE())
 #define HL_p RAM::read(CPU::readHL())
@@ -159,7 +175,7 @@ x(0x0, 0x0, 0x14,1,4,INC_R(D)        ) \
 x(0x0, 0x0, 0x15,1,4,DEC_R(B)        ) \
 x(0x0, 0x0, 0x16,2,8,LD_R_D(D, d8)   ) \
 x(0x6, 0x0, 0x17,1,4,RL_R(A) 			   ) \
-x(0x0, 0x0, 0x18,2,12,ADD_R_D(PC, r8)) \
+x(0x0, 0x0, 0x18,2,12,JR_N(r8) ) \
 x(0x0, 0x0, 0x19,1,8,writeHL(readHL() + readDE())) \
 x(0x0, 0x0, 0x1A,1,8,LD_R_D(A, DE_p) ) \
 x(0x0, 0x0, 0x1B,1,8,writeDE(readDE() - 0x01)) \
@@ -167,33 +183,33 @@ x(0x0, 0x0, 0x1C,1,4,INC_R(E)        ) \
 x(0x0, 0x0, 0x1D,1,4,DEC_R(E)        ) \
 x(0x0, 0x0, 0x1E,2,8,LD_R_D(E, d8)   ) \
 x(0x6, 0x0, 0x1F,1,4,RR_R(A)                ) \
-x(0x0, 0x0, 0x20,2,8,				   ) \
+x(0x0, 0x0, 0x20,2,8,JR_CC_N(!readZ, r8) ) \
 x(0x0, 0x0, 0x21,3,12,writeHL(d16)   ) \
-x(0x0, 0x0, 0x22,1,8,LD_D_R(HL_p, A) ) \
+x(0x0, 0x0, 0x22,1,8,LDI_D_R(HL_p, A) ) \
 x(0x0, 0x0, 0x23,1,8,writeHL(readHL() + 1)                ) \
 x(0x0, 0x0, 0x24,1,4,INC_R(H)        ) \
 x(0x0, 0x0, 0x25,1,4,DEC_R(H)        ) \
 x(0x0, 0x0, 0x26,2,8,LD_R_D(H, d8)   ) \
 x(0x0, 0x0, 0x27,1,4,                ) \
-x(0x0, 0x0, 0x28,2,8,                ) \
+x(0x0, 0x0, 0x28,2,8,JR_CC_N(readZ, r8)                ) \
 x(0x0, 0x0, 0x29,1,8,writeHL(2*readHL())                ) \
-x(0x0, 0x0, 0x2A,1,8,                ) \
+x(0x0, 0x0, 0x2A,1,8,LDI_R_D(A, HL_p)            ) \
 x(0x0, 0x0, 0x2B,1,8,writeHL(readHL() - 0x01 )                ) \
 x(0x0, 0x0, 0x2C,1,4,INC_R(L)		   ) \
 x(0x0, 0x0, 0x2D,1,4,DEC_R(L)        ) \
 x(0x0, 0x0, 0x2E,2,8,LD_R_D(L, d8)   ) \
 x(0x0, 0x6, 0x2F,1,4, (CPU::Registers.A = ~CPU::Registers.A)    ) \
-x(0x0, 0x0, 0x30,2,8, 			   ) \
+x(0x0, 0x0, 0x30,2,8,JR_CC_N(!readC, r8) 			   ) \
 x(0x0, 0x0, 0x31,3,12,LD_R_D(SP, d16)) \
-x(0x0, 0x0, 0x32,1,8,                ) \
+x(0x0, 0x0, 0x32,1,8,LDD_D_R(HL_p, A)           ) \
 x(0x0, 0x0, 0x33,1,8,INC_R(SP)	   ) \
 x(0x0, 0x0, 0x34,1,12,writeHL(readHL() + 0x01) ) \
 x(0x0, 0x0, 0x35,1,12,writeHL(readHL() - 0x01) ) \
 x(0x0, 0x0, 0x36,2,12,writeHL(d8)	   ) \
-x(0x6, 0x1, 0x37,1,4,                ) \
-x(0x0, 0x0, 0x38,2,8,                ) \
+x(0x6, 0x1, 0x37,1,4,setC           ) \
+x(0x0, 0x0, 0x38,2,8,JR_CC_N(readC, r8)  ) \
 x(0x0, 0x0, 0x39,1,8,writeHL(readHL() + Registers.SP)) \
-x(0x0, 0x0, 0x3A,1,8,                ) \
+x(0x0, 0x0, 0x3A,1,8,LDD_R_D(A, HL_p)               ) \
 x(0x0, 0x0, 0x3B,1,8,DEC_R(SP)       ) \
 x(0x0, 0x0, 0x3C,1,4,INC_R(A)        ) \
 x(0x0, 0x0, 0x3D,1,4,DEC_R(A)		   ) \
@@ -319,39 +335,39 @@ x(0x7, 0x0, 0xB4,1,4,OR_R(H)        ) \
 x(0x7, 0x0, 0xB5,1,4,OR_R(L)        ) \
 x(0x7, 0x0, 0xB6,1,8,OR_D(HL_p)     ) \
 x(0x7, 0x0, 0xB7,1,4,OR_R(A)        ) \
-x(0x0, 0x0, 0xB8,1,4,                ) \
-x(0x0, 0x0, 0xB9,1,4,                ) \
-x(0x0, 0x0, 0xBA,1,4,                ) \
-x(0x0, 0x0, 0xBB,1,4,                ) \
-x(0x0, 0x0, 0xBC,1,4,                ) \
-x(0x0, 0x0, 0xBD,1,4,                ) \
-x(0x0, 0x0, 0xBE,1,8,                ) \
-x(0x0, 0x0, 0xBF,1,4,                ) \
+x(0x0, 0x0, 0xB8,1,4,CP_R(B)                ) \
+x(0x0, 0x0, 0xB9,1,4,CP_R(C)                ) \
+x(0x0, 0x0, 0xBA,1,4,CP_R(D)                ) \
+x(0x0, 0x0, 0xBB,1,4,CP_R(E)                ) \
+x(0x0, 0x0, 0xBC,1,4,CP_R(H)                ) \
+x(0x0, 0x0, 0xBD,1,4,CP_R(L)                ) \
+x(0x0, 0x0, 0xBE,1,8,CP_D(HL_p)                ) \
+x(0x0, 0x0, 0xBF,1,4,CP_R(A)                ) \
 x(0x0, 0x0, 0xC0,1,8,                ) \
 x(0x0, 0x0, 0xC1,1,12,               ) \
-x(0x0, 0x0, 0xC2,3,12,               ) \
-x(0x0, 0x0, 0xC3,3,16,               ) \
+x(0x0, 0x0, 0xC2,3,12,JR_CC_N(!readZ,a16)               ) \
+x(0x0, 0x0, 0xC3,3,16,JR_N(a16)               ) \
 x(0x0, 0x0, 0xC4,3,12,               ) \
 x(0x0, 0x0, 0xC5,1,16,               ) \
 x(0x0, 0x0, 0xC6,2,8,ADD_R_D(A, d8)  ) \
 x(0x0, 0x0, 0xC7,1,16,               ) \
 x(0x0, 0x0, 0xC8,1,8,                ) \
 x(0x0, 0x0, 0xC9,1,16,               ) \
-x(0x0, 0x0, 0xCA,3,12,               ) \
+x(0x0, 0x0, 0xCA,3,12,JR_CC_N(readZ, a16)               ) \
 x(0x0, 0x0, 0xCC,3,12,               ) \
 x(0x0, 0x0, 0xCD,3,24,               ) \
 x(0x0, 0x0, 0xCE,2,8,                ) \
 x(0x0, 0x0, 0xCF,1,16,               ) \
 x(0x0, 0x0, 0xD0,1,8,                ) \
 x(0x0, 0x0, 0xD1,1,12,               ) \
-x(0x0, 0x0, 0xD2,3,12,               ) \
+x(0x0, 0x0, 0xD2,3,12,JR_CC_N(!readC,a16)               ) \
 x(0x0, 0x0, 0xD4,3,12,               ) \
 x(0x0, 0x0, 0xD5,1,16,               ) \
 x(0x0, 0x0, 0xD6,2,8,                ) \
 x(0x0, 0x0, 0xD7,1,16,               ) \
 x(0x0, 0x0, 0xD8,1,8,                ) \
 x(0x0, 0x0, 0xD9,1,16,               ) \
-x(0x0, 0x0, 0xDA,3,12,               ) \
+x(0x0, 0x0, 0xDA,3,12,JR_CC_N(readC, a16)               ) \
 x(0x0, 0x0, 0xDC,3,12,               ) \
 x(0x0, 0x0, 0xDE,2,8,                ) \
 x(0x0, 0x0, 0xDF,1,16,               ) \
@@ -374,7 +390,7 @@ x(0x0, 0x0, 0xF5,1,16,               ) \
 x(0x7, 0x0, 0xF6,2,8,                ) \
 x(0x0, 0x0, 0xF7,1,16,               ) \
 x(0x0, 0x0, 0xF8,2,12,               ) \
-x(0x0, 0x0, 0xF9,1,8,                ) \
+x(0x0, 0x0, 0xF9,1,8,Registers.SP = readHL() ) \
 x(0x0, 0x0, 0xFA,3,16,               ) \
 x(0x0, 0x0, 0xFB,1,4,                ) \
 x(0x0, 0x0, 0xFE,2,8,                ) \
@@ -653,8 +669,10 @@ namespace CPU{
 	*/
 	void start(){
 		while(!halt){
+			std::cout << Math::decHex(Registers.PC) << "\n";
+			
 			cycle();
-			std::cout << cycles << "\n";
+			//std::cout << cycles << "\n";
 		}
 	}
 	/*
@@ -676,7 +694,7 @@ namespace CPU{
 				INSTRUCTIONS(x)
 				#undef x
 
-				default: /*std::cout << "UNKNOWN OPCODE: " << Math::decHex(prefix) << "\n";*/ break;
+				default: std::cout << "UNKNOWN OPCODE: " << Math::decHex(prefix) << "\n";break;
 			}
 		} else {
 			switch(opcode){

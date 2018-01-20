@@ -1,4 +1,4 @@
-#define CURRENT_VER "dev0.0.1"
+#define CURRENT_VER "dev0.0.3"
 
 #include "Config.hpp"
 #include <unordered_map>
