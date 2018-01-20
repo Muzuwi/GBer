@@ -42,10 +42,16 @@ namespace RAM{
 	bool write(char16_t address, unsigned char byte){
 		if(address > 0xFFFF || address < 0x0){
 			return false;
+		}else if( (address >= 0xC000) && (address <= 0xDE00) ){		//  Echo RAM
+			RAM[address] = byte;
+			RAM[address + 0x2000] = byte;
+		}else if( (address >= 0xE000) && (address <= 0xFE00) ){
+			RAM[address] = byte;
+			RAM[address - 0x2000] = byte;
 		}else{
 			RAM[address] = byte;
-			return true;
 		}
+		return true;
 	}
 
 	/*
