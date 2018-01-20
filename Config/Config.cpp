@@ -43,6 +43,6 @@ namespace Config{
 	void setDefaults(){
 		setKeyState("DEBUG_MODE", "false");
 		setKeyState("BOOTROM_LOCATION", "DMG_ROM.bin");
-		setKeyState("ROM_LOCATION", "pkb.gb");
+		//setKeyState("ROM_LOCATION", "pkb.gb");
 	}
 }  // namespace Config

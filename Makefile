@@ -2,11 +2,12 @@ OUTPUT=GBer.exe
 CFLAGS= -Wall -O2 -g -std=c++17 -static
 LIB=-lboost_filesystem -lboost_system
 SRC=./File/File.cpp ./Memory/RAM.cpp ./CPU/CPU.cpp ./Math/Math.cpp ./Config/Config.cpp Main.cpp
+ADDFLAGS=-fmax-errors=1
 
 default: gber
 
 gber: $(SRC)
-	g++ $(CFLAGS) $(SRC) $(LIB) -o $(OUTPUT)
+	g++ $(CFLAGS) $(ADDFLAGS) $(SRC) $(LIB) -o $(OUTPUT)
 
 clean:
 	$(RM) $(OUTPUT)   

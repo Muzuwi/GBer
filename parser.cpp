@@ -12,7 +12,7 @@ std::string decHex(int);
 int main(){
 	std::vector<std::string> lines;
 	std::ifstream file;
-	file.open("CB3.txt");
+	file.open("OPS3.txt");
 	while(!file.eof()){
 		std::string temp;
 		std::getline(file, temp);
@@ -22,7 +22,7 @@ int main(){
 	std::cout << "Lines: " << lines.size() << "\n";
 
 	std::ofstream out;
-	out.open("optemplate_CB.txt");
+	out.open("optemplate_normal_fixed.txt");
 	for(size_t i = 0; i < lines.size(); i++){
 		int lower = i / 16;
 		int higher = i - 16*lower;
