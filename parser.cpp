@@ -12,7 +12,7 @@ std::string decHex(int);
 int main(){
 	std::vector<std::string> lines;
 	std::ifstream file;
-	file.open("OPS3.TXT");
+	file.open("CB3.txt");
 	while(!file.eof()){
 		std::string temp;
 		std::getline(file, temp);
@@ -22,7 +22,7 @@ int main(){
 	std::cout << "Lines: " << lines.size() << "\n";
 
 	std::ofstream out;
-	out.open("optemplate5.txt");
+	out.open("optemplate_CB.txt");
 	for(size_t i = 0; i < lines.size(); i++){
 		int lower = i / 16;
 		int higher = i - 16*lower;
@@ -35,19 +35,33 @@ int main(){
 			continue;
 		}
 
-		int flagMask = 0x0, power = 1;
-		for(int j = 4; j >= 1; j--){
-			if(blocks[2].at(j-1) == '0'){
-				flagMask |= power;
+		int flagMaskSet = 0x0, power = 1;
+		for(int j = 3; j >= 0; j--){
+			//std::cout << blocks[2].at(j-1);
+			if(blocks[2].at(j) == '0'){
+				std::cout << decHex(i) << "): " << flagMaskSet << " + " << power << " -> " << flagMaskSet+power << "(Iter " << j << ")\n";
+				flagMaskSet += power;
 			}
 			power *= 2;
 		}
+		//std::cout << "\n";
+
+		int flagMaskUnset = 0x0;
+		power = 1;
+		for(int j = 3; j >= 0; j--){
+			//std::cout << blocks[2].at(j-1);
+			if(blocks[2].at(j) == '1'){
+				flagMaskUnset += power;
+			}
+			power *= 2;
+		}
+		//std::cout << "\n";
 
 		if(blocks[1].size() > 2){
 			std::vector<std::string> cycle = Separate('/', blocks[1]);
-			out << "x(0x" << decHex(flagMask) << ",     0x" << decHex(lower) << decHex(higher) << "," << blocks[0] << "," << cycle[1] << "," << "                ) \\ \n";
+			out << "y(0x" << decHex(flagMaskSet) << ", 0x" << decHex(flagMaskUnset) << ", " << "0x" << decHex(lower) << decHex(higher) << "," << blocks[0] << "," << cycle[1] << "," << "                ) \\ \n";
 		}else{
-			out << "x(0x" << decHex(flagMask) << ",      0x" << decHex(lower) << decHex(higher) << "," << blocks[0] << "," << blocks[1] << "," << "                ) \\ \n";
+			out << "y(0x" << decHex(flagMaskSet) << ", 0x" << decHex(flagMaskUnset) << ", " << "0x" << decHex(lower) << decHex(higher) << "," << blocks[0] << "," << blocks[1] << "," << "                ) \\ \n";
 		}
 	}
 	out.close();
