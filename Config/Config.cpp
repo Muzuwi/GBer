@@ -22,6 +22,7 @@ namespace Config{
 				std::cout << "    -ver				Prints the version of GBer\n";
 				std::cout << "    -skiprom				Skips loading external ROM (Boot only)\n";
 				std::cout << "    -replaceboot			Replaces the bootrom with a custom image (arbitrary length)\n";
+				std::cout << "    -skipboot				Immediately jump to entrypoint 0x100\n";
 				return false;
 			}else if(!std::string("-replaceboot").compare(argv[i]) && (argv[i+1] != NULL)){
 				setKeyState("CUSTOMBOOT", "true");
@@ -34,6 +35,8 @@ namespace Config{
 				setKeyState("ROM_LOCATION", argv[i+1]);
 			}else if(!std::string("-skiprom").compare(argv[i]) && getKeyState("ROM_LOCATION") == ""){
 				setKeyState("SKIP_ROM", "true");
+			}else if(!std::string("-skipboot").compare(argv[i])){
+				setKeyState("SKIP_BOOT", "true");
 			}
 		}
 		return true;

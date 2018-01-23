@@ -1,5 +1,5 @@
 #pragma once
-#include <vector>
+#include <stack>
 
 namespace CPU{
 	struct Reg{
@@ -8,7 +8,7 @@ namespace CPU{
 	};
 	extern Reg Registers;
 	extern bool halt;
-	extern std::vector<char16_t> Stack;
+	extern std::stack<char16_t> GBStack;
 	void start();
 	bool cycle();
 	inline char16_t readHL();

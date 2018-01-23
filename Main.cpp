@@ -5,7 +5,7 @@
 #include "Config/Config.hpp"
 #include "CPU/CPU.hpp"
 
-int main(int argc, char* argv[]){
+int main(int argc, char* argv[]){ 
 	Config::setDefaults();
 	if(!Config::parseArgs(argv, argc)){
 		return 0;
@@ -16,6 +16,8 @@ int main(int argc, char* argv[]){
 
 	std::cout << "Debug: " << Config::getKeyState("DEBUG_MODE") << "\n";
 	std::vector<unsigned char> bootRom;
+	std::ofstream debugFile;
+
 	if(Config::getKeyState("CUSTOMBOOT") == "true"){
 		bootRom = File::loadFromFile(Config::getKeyState("CUSTOMBOOT_LOCATION"));
 		std::cout << "Using custom boot image\n";
@@ -26,28 +28,22 @@ int main(int argc, char* argv[]){
 	}
 
 	std::cout << "Boot rom " << bootRom.size() << " bytes\n";
-	
-	if(Config::getKeyState("SKIP_ROM") != "true"){
-		std::vector<unsigned char> rom = File::loadFromFile(Config::getKeyState("ROM_LOCATION"));
-		std::cout << "Loading app ROM into RAM..";
-		std::cout << "ROM File size " << rom.size() << " bytes\n";
-		if(RAM::insert(rom, 0x0150, 0x3EB0)){
-				std::cout << "success\n";
-			}else{
-				std::cout << "failed\n";
-			}			
-	}
-
 	std::cout << "Loading Bootrom into RAM..";
-	if(RAM::insert(bootRom, 0x0, 0x100)){
-		std::cout << "success\n";
-	}else{
-		std::cout << "failed\n";
-	}
+	RAM::insert(bootRom, 0x0, bootRom.size());
+
+	if(Config::getKeyState("SKIP_ROM") != "true"){
+		RAM::romFile = File::loadFromFile(Config::getKeyState("ROM_LOCATION"));
+		std::cout << "ROM File size " << RAM::romFile.size() << " bytes\n";
+		//std::cout << "Loading app ROM into RAM..\n";
+		//RAM::insert(rom, 0x0100, 0x3EB0);
+	}	
 
 	std::cout << "Dumping initial RAM contents..\n";
 	RAM::dump("memdmp.txt");
 	std::cout << "Starting CPU\n";
+	if(Config::getKeyState("SKIP_BOOT") == "true"){
+		CPU::Registers.PC = 0x100;
+	}
 	CPU::start();
 
 	return 0;

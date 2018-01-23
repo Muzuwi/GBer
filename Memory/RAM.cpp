@@ -19,7 +19,7 @@ namespace RAM{
 	   	 IO(0x004C);			// I/O 
 	   EMP1(0x0034);		// Empty #1 
 	   IRAM(0x0080);		// Internal RAM */
-
+	std::vector<unsigned char> romFile;
 	std::vector<unsigned char>RAM(0x10000);
 
 	/*
@@ -53,6 +53,36 @@ namespace RAM{
 		}
 		return true;
 	}
+
+	/*
+		Writes 2 bytes to RAM
+		Arguments: address, byte sequence
+	
+	*/
+	bool write_16(char16_t address, char16_t byte){
+		char upper = (byte >> 8), lower = (byte & ~0xFF00);
+		if(address > 0xFFFF - 0x01 || address < 0x0){
+			return false;
+		}else if( (address >= 0xC000) && (address <= 0xDE00 - 0x01) ){		//  Echo RAM
+			RAM[address] = upper;
+			RAM[address + 0x01] = lower;
+
+			RAM[address + 0x2000] = upper;
+			RAM[address + 0x2000 + 0x01] = lower;
+		}else if( (address >= 0xE000) && (address <= 0xFE00 - 0x01) ){
+			RAM[address] = upper;
+			RAM[address + 0x01] = lower;
+
+			RAM[address - 0x2000] = upper;
+			RAM[address - 0x2000 - 0x01] = lower;
+		}else{
+			RAM[address] = byte;
+		}
+		return true;
+	}
+
+
+
 
 	/*
 		Copy a block of bytes to another location in RAM

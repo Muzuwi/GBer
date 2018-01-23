@@ -1,10 +1,12 @@
-#include <vector>
+#include <stack>
 #include <iostream>
 #include "CPU.hpp"
 #include "../Math/Math.hpp"
 #include "../Memory/RAM.hpp"
 
-// Flag reading
+/* 
+	Flag reading
+*/
 #define readZ	((Registers.F >> 7))
 #define readN   ((Registers.F & 0x40) >> 6)
 #define readH   ((Registers.F & 0x20) >> 5)
@@ -20,7 +22,9 @@
 #define unsetH  (Registers.F &= ~0x20)
 #define unsetC  (Registers.F &= ~0x10)
 
-//  Modifying bits
+/*  
+	Modifying bits
+*/
 #define setBitN_R(a, b)  (Registers.b |= (0x01 << a))
 #define setBitN_D(a, b)  (RAM::write(b, RAM::read(b) | (0x01 << a)))
 #define resetBitN_R(a, b)  (Registers.b &= ~(1 << a))
@@ -94,17 +98,22 @@
 					RAM::write(a, (RAM::read(a) & ~(1 << 7)) | (bit0 << 7)); \
 					if(RAM::read(a) == 0){ setZ; }
 
-//  Bit testing
+/*  
+	Bit testing
+*/
 #define BIT_X_R(a,b) (Registers.b & (1 << a))
 #define BIT_X_D(a,b) (b & (1 << a))
 
 #define BITN_R(a,b)  if(BIT_X_R(a,b)){ setZ; } else { unsetZ; }
 #define BITN_D(a,b)  if(BIT_X_D(a,b)){ setZ; } else { unsetZ; }
 
-//  Load / store instructions
+/*
+  	Load / store instructions and flow control
+*/
 #define LD_R_R(a, b) CPU::Registers.a = CPU::Registers.b
 #define LD_R_D(a, b) CPU::Registers.a = b
 #define LD_D_R(a, b) RAM::write(a, CPU::Registers.b)
+#define LD_D16_R(a, b) RAM::write_16(a, CPU::Registers.b)
 #define LDI_D_R(a, b) RAM::write(a, CPU::Registers.b); writeHL(readHL() + 1)
 #define LDI_R_D(a, b) CPU::Registers.a = RAM::read(b); writeHL(readHL() + 1)
 #define LDD_D_R(a, b) RAM::write(a, CPU::Registers.b); writeHL(readHL() - 1)
@@ -112,7 +121,42 @@
 #define JR_CC_N(a, b) if(a){ CPU::Registers.PC += b; }
 #define JR_N(a)	CPU::Registers.PC += a
 
-//  Arithmetic
+#define CALL_NN(a)  std::cout << "Entering routine, stack size pre: " << CPU::GBStack.size(); \
+					CPU::GBStack.push(/*( () >> 8) | ( (CPU::Registers.PC + 0x03) << 8)*/ CPU::Registers.PC + 0x03 ); \
+					std::cout << " post: " << CPU::GBStack.size() << ", stack top: 0x" << Math::decHex(CPU::GBStack.top()) << "\n"; \
+					CPU::Registers.PC = ((a >> 8) | (a << 8));	\
+					preservePC = true;
+
+#define CALL_XX_NN(a, b) if(a){ CALL_NN(b); }
+
+
+#define RET 		std::cout << "Returning from routine, stack size pre: " << CPU::GBStack.size(); \
+					CPU::Registers.PC = CPU::GBStack.top();	\
+					CPU::GBStack.pop(); \
+					std::cout << " post: " << CPU::GBStack.size() << ", stack top: 0x" << (CPU::GBStack.empty() ? "0" : Math::decHex(CPU::GBStack.top()) ) << "\n"; \
+					preservePC = true;
+
+
+#define RET_XX(a)		if(a){ RET; }
+
+#define RETI  		RET;																			//  ADD INTERRUPTS WHEN IMPLEMENTED
+
+
+#define PUSH_NN(a)	CPU::GBStack.push(a); \
+					CPU::Registers.SP -= 0x02;
+
+#define POP_NN(a)	write##a(CPU::GBStack.top()); \
+					CPU::GBStack.pop(); \
+					CPU::Registers.SP += 0x02;
+
+#define RST_N(a)	CPU::GBStack.push(CPU::Registers.PC); \
+					CPU::Registers.PC = 0x0 + a; \
+					preservePC = true;
+
+
+/*
+	Arithmetic
+*/
 #define ADD_R_R(a, b) if(CPU::Registers.a + CPU::Registers.b > 0xFF){ setC; }; \
 					  CPU::Registers.a += CPU::Registers.b; \
 					  if(CPU::Registers.a == 0){ setZ; }												//         !!!! IMPORTANT: DO HALF CARRY FLAG
@@ -165,7 +209,9 @@
 				    writeHL(readHL() + a);														//			!!!! IMPORTANT: DO HALF CARRY FLAG
 
 
-//  Bitwise operations
+/*
+  Bitwise operations
+*/
 #define AND_R(a) CPU::Registers.A &= CPU::Registers.a;  if(CPU::Registers.A == 0){ setZ; }
 #define AND_D(a) CPU::Registers.A &= a; 				if(CPU::Registers.A == 0){ setZ; }
 #define OR_R(a) CPU::Registers.A |= CPU::Registers.a;   if(CPU::Registers.A == 0){ setZ; }
@@ -173,19 +219,22 @@
 #define XOR_R(a) CPU::Registers.A ^= CPU::Registers.a;  if(CPU::Registers.A == 0){ setZ; }
 #define XOR_D(a) CPU::Registers.A ^= a; 				if(CPU::Registers.A == 0){ setZ; }
 
-//  Alright, hopefully it's okay right now
-//  Read values in memory pointed to by xx
+/* 
+	Values in memory pointed to by xx
+*/
 #define BC_mv RAM::read(CPU::readBC())
 #define DE_mv RAM::read(CPU::readDE())
 #define HL_mv RAM::read(CPU::readHL())
 
-//  Values of xx
+/* 
+    Values of xx
+*/
 #define BC_v  CPU::readBC()
 #define DE_v  CPU::readDE()
 #define HL_v  CPU::readHL()
 
 #define INSTRUCTIONS(x) \
-x(0x0, 0x0, 0x00,1,4, /* filler */  ) \
+x(0x0, 0x0, 0x00,1,4, /* filler */ ) \
 x(0x0, 0x0, 0x01,3,12,writeBC(d16)   ) \
 x(0x0, 0x0, 0x02,1,8,LD_D_R(BC_v, A) ) \
 x(0x0, 0x0, 0x03,1,8,writeBC(readBC() + 0x01)) \
@@ -201,7 +250,7 @@ x(0x0, 0x0, 0x0C,1,4,INC_R(C)        ) \
 x(0x0, 0x0, 0x0D,1,4,DEC_R(C)		   ) \
 x(0x0, 0x0, 0x0E,2,8,LD_R_D(C, d8)   ) \
 x(0x6, 0x0, 0x0F,1,4,RRC_R(A)			   ) \
-x(0x0, 0x0, 0x10,2,4,				   ) \
+x(0x0, 0x0, 0x10,2,4,	/* STOP 0 */			   ) \
 x(0x0, 0x0, 0x11,3,12,writeDE(d16)   ) \
 x(0x0, 0x0, 0x12,1,8,LD_D_R(DE_v, A) ) \
 x(0x0, 0x0, 0x13,1,8,writeDE(readDE() + 0x01)                ) \
@@ -224,7 +273,7 @@ x(0x0, 0x0, 0x23,1,8,writeHL(readHL() + 1)                ) \
 x(0x0, 0x0, 0x24,1,4,INC_R(H)        ) \
 x(0x0, 0x0, 0x25,1,4,DEC_R(H)        ) \
 x(0x0, 0x0, 0x26,2,8,LD_R_D(H, d8)   ) \
-x(0x0, 0x0, 0x27,1,4,                ) \
+x(0x0, 0x0, 0x27,1,4,  /* DAA */              ) \
 x(0x0, 0x0, 0x28,2,8,JR_CC_N(readZ, r8)                ) \
 x(0x0, 0x0, 0x29,1,8,ADD_HL_N(readHL())                ) \
 x(0x0, 0x0, 0x2A,1,8,LDI_R_D(A, HL_mv)            ) \
@@ -377,58 +426,58 @@ x(0x0, 0x0, 0xBC,1,4,CP_R(H)                ) \
 x(0x0, 0x0, 0xBD,1,4,CP_R(L)                ) \
 x(0x0, 0x0, 0xBE,1,8,CP_D(HL_mv)                ) \
 x(0x0, 0x0, 0xBF,1,4,CP_R(A)                ) \
-x(0x0, 0x0, 0xC0,1,8,                ) \
-x(0x0, 0x0, 0xC1,1,12,               ) \
+x(0x0, 0x0, 0xC0,1,8,RET_XX(!readZ)               ) \
+x(0x0, 0x0, 0xC1,1,12,POP_NN(BC)              ) \
 x(0x0, 0x0, 0xC2,3,12,JR_CC_N(!readZ,a16)               ) \
 x(0x0, 0x0, 0xC3,3,16,JR_N(a16)               ) \
-x(0x0, 0x0, 0xC4,3,12,               ) \
-x(0x0, 0x0, 0xC5,1,16,               ) \
+x(0x0, 0x0, 0xC4,3,12,CALL_XX_NN(!readZ, a16)               ) \
+x(0x0, 0x0, 0xC5,1,16,PUSH_NN(readBC())               ) \
 x(0x0, 0x0, 0xC6,2,8,ADD_R_D(A, d8)  ) \
-x(0x0, 0x0, 0xC7,1,16,               ) \
-x(0x0, 0x0, 0xC8,1,8,                ) \
-x(0x0, 0x0, 0xC9,1,16,               ) \
+x(0x0, 0x0, 0xC7,1,16,RST_N(0x0)              ) \
+x(0x0, 0x0, 0xC8,1,8, RET_XX(readZ)               ) \
+x(0x0, 0x0, 0xC9,1,16,RET               ) \
 x(0x0, 0x0, 0xCA,3,12,JR_CC_N(readZ, a16)               ) \
-x(0x0, 0x0, 0xCC,3,12,               ) \
-x(0x0, 0x0, 0xCD,3,24,               ) \
-x(0x0, 0x0, 0xCE,2,8,                ) \
-x(0x0, 0x0, 0xCF,1,16,               ) \
-x(0x0, 0x0, 0xD0,1,8,                ) \
-x(0x0, 0x0, 0xD1,1,12,               ) \
+x(0x0, 0x0, 0xCC,3,12,CALL_XX_NN(readZ, a16)               ) \
+x(0x0, 0x0, 0xCD,3,24,CALL_NN(a16)               ) \
+x(0x0, 0x0, 0xCE,2,8,ADC_D(d8)              ) \
+x(0x0, 0x0, 0xCF,1,16,RST_N(0x08)               ) \
+x(0x0, 0x0, 0xD0,1,8, RET_XX(!readC)               ) \
+x(0x0, 0x0, 0xD1,1,12,POP_NN(DE)               ) \
 x(0x0, 0x0, 0xD2,3,12,JR_CC_N(!readC,a16)               ) \
-x(0x0, 0x0, 0xD4,3,12,               ) \
-x(0x0, 0x0, 0xD5,1,16,               ) \
-x(0x0, 0x0, 0xD6,2,8,                ) \
-x(0x0, 0x0, 0xD7,1,16,               ) \
-x(0x0, 0x0, 0xD8,1,8,                ) \
-x(0x0, 0x0, 0xD9,1,16,               ) \
+x(0x0, 0x0, 0xD4,3,12,CALL_XX_NN(!readC, a16)               ) \
+x(0x0, 0x0, 0xD5,1,16,PUSH_NN(readDE())               ) \
+x(0x0, 0x0, 0xD6,2,8, SUB_R_D(A, d8)               ) \
+x(0x0, 0x0, 0xD7,1,16,RST_N(0x10)               ) \
+x(0x0, 0x0, 0xD8,1,8,RET_XX(readC)                ) \
+x(0x0, 0x0, 0xD9,1,16,RETI              ) \
 x(0x0, 0x0, 0xDA,3,12,JR_CC_N(readC, a16)               ) \
-x(0x0, 0x0, 0xDC,3,12,               ) \
-x(0x0, 0x0, 0xDE,2,8,                ) \
-x(0x0, 0x0, 0xDF,1,16,               ) \
+x(0x0, 0x0, 0xDC,3,12,CALL_XX_NN(readC, a16)               ) \
+x(0x0, 0x0, 0xDE,2,8, SBC_D(d8)               ) \
+x(0x0, 0x0, 0xDF,1,16,RST_N(0x18)               ) \
 x(0x0, 0x0, 0xE0,2,12,LD_D_R(0xFF00 + a8, A)               ) \
-x(0x0, 0x0, 0xE1,1,12,               ) \
+x(0x0, 0x0, 0xE1,1,12,POP_NN(HL)               ) \
 x(0x0, 0x0, 0xE2,2,8,LD_D_R(0xFF00 + CPU::Registers.C, A)    ) \
-x(0x0, 0x0, 0xE5,1,16,               ) \
-x(0x5, 0x2, 0xE6,2,8,                ) \
-x(0x0, 0x0, 0xE7,1,16,               ) \
+x(0x0, 0x0, 0xE5,1,16,PUSH_NN(readHL())               ) \
+x(0x5, 0x2, 0xE6,2,8,AND_D(d8)                ) \
+x(0x0, 0x0, 0xE7,1,16,RST_N(0x20)                ) \
 x(0x0, 0x0, 0xE8,2,16,ADD_R_D(SP, r8)) \
-x(0x0, 0x0, 0xE9,1,4,                ) \
-x(0x0, 0x0, 0xEA,3,16,               ) \
-x(0x7, 0x0, 0xEE,2,8,                ) \
-x(0x0, 0x0, 0xEF,1,16,               ) \
+x(0x0, 0x0, 0xE9,1,4,CPU::Registers.PC = HL_mv; preservePC = true; ) \
+x(0x0, 0x0, 0xEA,3,16,LD_D16_R(a16, A)              ) \
+x(0x7, 0x0, 0xEE,2,8, XOR_D(d8)              ) \
+x(0x0, 0x0, 0xEF,1,16,RST_N(0x28)              ) \
 x(0x0, 0x0, 0xF0,2,12,LD_R_D(A, RAM::read(0xFF00 + a8))               ) \
-x(0x0, 0x0, 0xF1,1,12,               ) \
+x(0x0, 0x0, 0xF1,1,12,  /* POP AF */ ) \
 x(0x0, 0x0, 0xF2,2,8,LD_R_D(A, RAM::read(0xFF00 + CPU::Registers.C) ) ) \
-x(0x0, 0x0, 0xF3,1,4,                ) \
-x(0x0, 0x0, 0xF5,1,16,               ) \
-x(0x7, 0x0, 0xF6,2,8,                ) \
-x(0x0, 0x0, 0xF7,1,16,               ) \
-x(0x0, 0x0, 0xF8,2,12,               ) \
+x(0x0, 0x0, 0xF3,1,4,   /* DI */           ) \
+x(0x0, 0x0, 0xF5,1,16,	/* PUSH AF */             ) \
+x(0x7, 0x0, 0xF6,2,8, OR_D(d8)             ) \
+x(0x0, 0x0, 0xF7,1,16,RST_N(0x30)              ) \
+x(0x0, 0x0, 0xF8,2,12,writeHL(CPU::Registers.SP + r8) ) \
 x(0x0, 0x0, 0xF9,1,8,Registers.SP = readHL() ) \
-x(0x0, 0x0, 0xFA,3,16,               ) \
-x(0x0, 0x0, 0xFB,1,4,                ) \
-x(0x0, 0x0, 0xFE,2,8,                ) \
-x(0x0, 0x0, 0xFF,1,16,               )
+x(0x0, 0x0, 0xFA,3,16, LD_R_D(A, a16)               ) \
+x(0x0, 0x0, 0xFB,1,4,   /* EI */             ) \
+x(0x0, 0x0, 0xFE,2,8,CP_D(d8)                ) \
+x(0x0, 0x0, 0xFF,1,16,RST_N(0x38)               )
 
 //  End of INSTRUCTIONS()
 
@@ -695,7 +744,7 @@ y(0x0, 0x0, 0xFF,2,8, setBitN_R(7,A)		)
 namespace CPU{
 	Reg Registers;
 	bool halt = false;
-	std::vector<char16_t> Stack;
+	std::stack<char16_t> GBStack;
 	int64_t cycles;
 
 	/*
@@ -703,18 +752,24 @@ namespace CPU{
 	*/
 	void start(){
 		while(!halt){
-			std::cout << "Serial data: " << Math::decHex(RAM::read(0xFF01)) << "\n";
-			
-			//std::cout << "PC: $" << Math::decHex(Registers.PC) << "\n";
-
+			if(RAM::read(0xFF50) == 0x01){
+				std::cout << "Unmounting bootrom & remounting ROM\n";
+				RAM::insert(RAM::romFile, 0x0, 0x8000);
+				halt = true;
+			}
+			/*if(CPU::Registers.PC == 0x100){
+				//std::cout << "HOLY FUCK ENTRYPOINT\n";
+				halt = true;
+			}*/
+			std::cout << Math::decHex(Registers.PC) << " " << Math::decHex(Registers.A) << " " << Math::decHex(Registers.B) << " " << Math::decHex(Registers.F) << " " << Math::decHex(readHL()) << "\n";
 			cycle();
-			//std::cout << cycles << "\n";
 		}
 	}
 	/*
 		Executes one CPU cycle/instruction
 	*/
 	bool cycle(){
+		bool preservePC = false;
 		unsigned char prefix = RAM::read(Registers.PC),
 					  opcode = RAM::read(Registers.PC + 0x001);
 		if(prefix != 0xCB){
@@ -726,7 +781,7 @@ namespace CPU{
 			unsigned char a8 = RAM::read(Registers.PC + 0x001);
 
 			switch(prefix){
-				#define x(unsetMask,setMask,op,byte,cycle,ins) case op:{ ins; Registers.F |= setMask; Registers.F &= ~unsetMask; cycles += cycle; Registers.PC += byte; break;}
+				#define x(unsetMask,setMask,op,byte,cycle,ins) case op:{ ins; Registers.F |= setMask; Registers.F &= ~unsetMask; cycles += cycle; if(!preservePC){ Registers.PC += byte; }; break;}
 				INSTRUCTIONS(x)
 				#undef x
 
@@ -753,7 +808,8 @@ namespace CPU{
 		Eventually allow for randomization of initial memory
 	*/
 	void clearState(){
-		Registers.SP = Registers.PC = Registers.A = Registers.B \
+		Registers.SP = -1;
+		Registers.PC = Registers.A = Registers.B \
 					 = Registers.C = Registers.D = Registers.E \
 					 = Registers.H = Registers.L = 0x0;
 	}
