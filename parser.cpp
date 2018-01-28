@@ -12,7 +12,7 @@ std::string decHex(int);
 int main(){
 	std::vector<std::string> lines;
 	std::ifstream file;
-	file.open("OPS3.txt");
+	file.open("ops.txt");
 	while(!file.eof()){
 		std::string temp;
 		std::getline(file, temp);
@@ -30,6 +30,7 @@ int main(){
 
 		if(blocks.size() < 2){ 
 			std::cout << "\nMalformed entry " << i << "\n";
+			continue;
 		}else if(blocks[0] == "DUMMY"){
 			std::cout << "Ignoring\n";
 			continue;

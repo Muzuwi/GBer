@@ -28,4 +28,27 @@ namespace Math{
          std::reverse(text.begin(), text.end());
          return (text.size() <= 0) ? "?" : text;
      }
+
+     /*
+        Because i'm a lazy fuck
+     */
+     std::string decBin(int num){
+          std::string text = "";
+         int b = num, a = 0;
+         do{
+             a = b % 2;
+             if(a < 10){
+                text += char(a+48);
+             }else{
+                text += char(a+48+7);
+             }
+             b /= 2;
+         }while(b != 0);
+         while(text.size() != 8){
+            text.append(1, '0');
+         }
+         std::reverse(text.begin(), text.end());
+         return (text.size() <= 0) ? "?" : text;
+       
+     }
 }

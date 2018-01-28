@@ -11,6 +11,7 @@ namespace CPU{
 	extern std::stack<char16_t> GBStack;
 	void start();
 	bool cycle();
+	void clearState();
 	inline char16_t readHL();
 	inline char16_t readBC();
 	inline char16_t readDE();

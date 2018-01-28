@@ -20,13 +20,13 @@ namespace RAM{
 	   EMP1(0x0034);		// Empty #1 
 	   IRAM(0x0080);		// Internal RAM */
 	std::vector<unsigned char> romFile;
-	std::vector<unsigned char>RAM(0x10000);
+	std::vector<unsigned char> RAM(0x10000);
 
 	/*
 		Reads a byte from RAM
 		Arguments: memory address to read from
 	*/
-	char read(char16_t address){
+	unsigned char read(char16_t address){
 		if(address > 0xFFFF || address < 0x0){
 			// Most likely unspecified
 			return 0xFF;
@@ -120,13 +120,14 @@ namespace RAM{
 	/*
 		Insert the contents of a vector into the RAM (For loading the ROM, bootrom, whatever)
 		Arguments: Vector<char>, Destination address, length of block to insert
+		Override: ignores attempts to prevent out of bounds writes/whatever else is there
 	*/
-	bool insert(std::vector<unsigned char> in, char16_t dest, unsigned int length){
-		if(in.size() == 0 || dest > 0xFFFF || dest < 0x0 || (dest + length) > 0xFFFF){
+	bool insert(std::vector<unsigned char> in, char16_t dest, unsigned int length, bool override){
+		if( (in.size() == 0 || dest > 0xFFFF || dest < 0x0 || (dest + length) > 0xFFFF) && !override){
 			return false;
 		}
 
-		for(unsigned int i = 0; i < length; i++){
+		for(size_t i = 0; i < length; i++){
 			RAM[dest + i] = in[i];
 		}
 		return true;
