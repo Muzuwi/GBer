@@ -4,10 +4,12 @@
 #include <map>
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
+
+#include "../Debug/Debug.hpp"
 #include "RAM.hpp"
 #include "../Math/Math.hpp"
-namespace RAM{
 
+namespace RAM{
 	/* ROM0(0x4000);		// Bank #0
 	   SROM(0x4000);		// Switchable ROM bank
 	   VRAM(0x2000);		// VRAM
@@ -29,6 +31,7 @@ namespace RAM{
 	unsigned char read(char16_t address){
 		if(address > 0xFFFF || address < 0x0){
 			// Most likely unspecified
+			Debug::emuLog("Reading from undefined address " + Math::decHex(address), Debug::LEVEL::ERROR);
 			return 0xFF;
 		}else{
 			return RAM[address];
@@ -41,6 +44,7 @@ namespace RAM{
 	*/
 	bool write(char16_t address, unsigned char byte){
 		if(address > 0xFFFF || address < 0x0){
+			Debug::emuLog("Failed writing " + Math::decHex(byte) + " to address " + Math::decHex(address), Debug::LEVEL::ERROR);
 			return false;
 		}else if( (address >= 0xC000) && (address <= 0xDE00) ){		//  Echo RAM
 			RAM[address] = byte;
@@ -62,6 +66,7 @@ namespace RAM{
 	bool write_16(char16_t address, char16_t byte){
 		char upper = (byte >> 8), lower = (byte & ~0xFF00);
 		if(address > 0xFFFF - 0x01 || address < 0x0){
+			Debug::emuLog("Failed writing " + Math::decHex(byte) + " to address " + Math::decHex(address), Debug::LEVEL::ERROR);
 			return false;
 		}else if( (address >= 0xC000) && (address <= 0xDE00 - 0x01) ){		//  Echo RAM
 			RAM[address] = upper;

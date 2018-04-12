@@ -44,7 +44,7 @@ namespace Math{
              }
              b /= 2;
          }while(b != 0);
-         while(text.size() != 8){
+         while(text.size() != 4){
             text.append(1, '0');
          }
          std::reverse(text.begin(), text.end());

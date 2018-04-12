@@ -15,8 +15,10 @@ namespace CPU{
 	inline char16_t readHL();
 	inline char16_t readBC();
 	inline char16_t readDE();
+	inline char16_t readAF();
 	inline void writeHL(char16_t);
 	inline void writeBC(char16_t);
 	inline void writeDE(char16_t);
+	inline void writeAF(char16_t);
 	inline void copyToC(int);
 }  // namespace CPU

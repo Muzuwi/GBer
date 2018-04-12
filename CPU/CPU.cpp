@@ -1,8 +1,10 @@
 #include <stack>
 #include <iostream>
+#include <boost/lexical_cast.hpp>
 #include "CPU.hpp"
 #include "../Math/Math.hpp"
 #include "../Memory/RAM.hpp"
+#include "../Debug/Debug.hpp"
 
 /* 
 	Flag reading
@@ -25,12 +27,12 @@
 /*  
 	Modifying bits
 */
-#define setBitN_R(a, b)  (Registers.b |= (0x01 << a))
-#define setBitN_D(a, b)  (RAM::write(b, RAM::read(b) | (0x01 << a)))
-#define resetBitN_R(a, b)  (Registers.b &= ~(1 << a))
-#define resetBitN_D(a, b)  (RAM::write(b, b & ~(1 << a)))
-#define SWAP_R(a) 	(Registers.a = (Registers.a >> 4) | (Registers.a << 4)); if(Registers.a == 0){ setZ; } else { unsetZ; }
-#define SWAP_D(a)	RAM::write(a, (RAM::read(a) >> 4) | (RAM::read(a) << 4)); if(RAM::read(a) == 0){ setZ; } else { unsetZ; }
+#define setBitN_R(a, b)  	(Registers.b |= (0x01 << a))
+#define setBitN_D(a, b)  	(RAM::write(b, RAM::read(b) | (0x01 << a)))
+#define resetBitN_R(a, b)   (Registers.b &= ~(1 << a))
+#define resetBitN_D(a, b)   (RAM::write(b, b & ~(1 << a)))
+#define SWAP_R(a) 			(Registers.a = (Registers.a >> 4) | (Registers.a << 4)); if(Registers.a == 0){ setZ; } else { unsetZ; }
+#define SWAP_D(a)			RAM::write(a, (RAM::read(a) >> 4) | (RAM::read(a) << 4)); if(RAM::read(a) == 0){ setZ; } else { unsetZ; }
 
 #define SLA_R(a)	copyToC(Registers.a >> 7); \
 					Registers.a = Registers.a << 1; \
@@ -123,19 +125,19 @@
 #define JP_N(a) CPU::Registers.PC = a; preservePC = true;
 #define JP_CC_N(a, b) if(a){ CPU::Registers.PC = b; preservePC = true;}
 
-#define CALL_NN(a)  log << "Entering routine, stack size pre: " << CPU::GBStack.size(); \
-					CPU::GBStack.push(/*( () >> 8) | ( (CPU::Registers.PC + 0x03) << 8)*/ CPU::Registers.PC + 0x03 ); \
-					log << " post: " << CPU::GBStack.size() << ", stack top: 0x" << Math::decHex(CPU::GBStack.top()) << "\n"; \
-					CPU::Registers.PC = (/*(a >> 8) | (a << 8)*/ a);	\
+#define CALL_NN(a)  /* log << "Entering routine, stack size pre: " << CPU::GBStack.size(); */ \
+					CPU::GBStack.push(CPU::Registers.PC + 0x03); \
+					/* log << " post: " << CPU::GBStack.size() << ", stack top: 0x" << Math::decHex(CPU::GBStack.top()) << "\n"; */\
+					CPU::Registers.PC = a;	\
 					preservePC = true;
 
 #define CALL_XX_NN(a, b) if(a){ CALL_NN(b); }
 
 
-#define RET 		log << "Returning from routine, stack size pre: " << CPU::GBStack.size(); \
+#define RET 		/* log << "Returning from routine, stack size pre: " << CPU::GBStack.size(); */\
 					CPU::Registers.PC = CPU::GBStack.top();	\
 					CPU::GBStack.pop(); \
-					log << " post: " << CPU::GBStack.size() << ", stack top: 0x" << (CPU::GBStack.empty() ? "0" : Math::decHex(CPU::GBStack.top()) ) << "\n"; \
+					/*log << " post: " << CPU::GBStack.size() << ", stack top: 0x" << (CPU::GBStack.empty() ? "0" : Math::decHex(CPU::GBStack.top()) ) << "\n"; */ \
 					preservePC = true;
 
 
@@ -154,7 +156,6 @@
 #define RST_N(a)	CPU::GBStack.push(CPU::Registers.PC); \
 					CPU::Registers.PC = 0x0 + a; \
 					preservePC = true;
-
 
 /*
 	Arithmetic
@@ -248,6 +249,12 @@
 #define DE_v  CPU::readDE()
 #define HL_v  CPU::readHL()
 
+/* 
+	!!!!! CAUTION !!!!!
+	MACRO FUCKERY AHEAD
+
+	x( F bits disabled mask, F bits enabled mask, OPcode, Byte count, Cycle count, Expression/Action)
+*/
 #define INSTRUCTIONS(x) \
 x(0x0, 0x0, 0x00,1,4, /* filler */ 										) \
 x(0x0, 0x0, 0x01,3,12,writeBC(d16)   									) \
@@ -481,10 +488,10 @@ x(0x0, 0x0, 0xEA,3,16,LD_D16_R(a16, A)              					) \
 x(0x7, 0x0, 0xEE,2,8, XOR_D(d8)              							) \
 x(0x0, 0x0, 0xEF,1,16,RST_N(0x28)              							) \
 x(0x0, 0x0, 0xF0,2,12,LD_R_D(A, RAM::read(0xFF00 + a8))               	) \
-x(0x0, 0x0, 0xF1,1,12,  /* POP AF */ 									) \
+x(0x0, 0x0, 0xF1,1,12,POP_NN(AF) 									) \
 x(0x0, 0x0, 0xF2,2,8,LD_R_D(A, RAM::read(0xFF00 + CPU::Registers.C) ) 	) \
 x(0x0, 0x0, 0xF3,1,4,   /* DI */           								) \
-x(0x0, 0x0, 0xF5,1,16,	/* PUSH AF */             						) \
+x(0x0, 0x0, 0xF5,1,16, PUSH_NN(readAF())             						) \
 x(0x7, 0x0, 0xF6,2,8, OR_D(d8)             								) \
 x(0x0, 0x0, 0xF7,1,16,RST_N(0x30)              							) \
 x(0xC, 0x0, 0xF8,2,12,writeHL(CPU::Registers.SP + r8) 					) \
@@ -769,21 +776,12 @@ namespace CPU{
 	void start(){
 		clearState();
 		log.open("EMULOG.txt");
-		while(!halt){
 
-			while(cycles > 0){		//  Is this how I'm supposed to do timing???????
+		while(!halt){
+			while(cycles > 0){		//  No clue what I'm doing
 				cycles--;
 			}
 
-			//std::cout << RAM::read(0xFF01);
-
-
-			/*if(RAM::read(0xFF50) == 0x01){
-				std::cout << "Unmounting bootrom & remounting ROM\n";
-				RAM::insert(RAM::romFile, 0x0, 0x8000, false);
-				halt = true;
-			}*/
-			
 			cycle();
 		}
 		log.close();
@@ -794,34 +792,35 @@ namespace CPU{
 	bool cycle(){
 		bool preservePC = false;
 		unsigned char prefix = RAM::read(Registers.PC),
-					  opcode = RAM::read(Registers.PC + 0x001);
+					  opcode = RAM::read(Registers.PC + 0x001),
+					  d8 = RAM::read(Registers.PC + 0x001),
+					  a8 = RAM::read(Registers.PC + 0x001);
 		char16_t d16 = RAM::read(Registers.PC + 0x001) + RAM::read(Registers.PC + 0x002)*0x100,
 			   	 a16 = d16;
-		char     d8 = RAM::read(Registers.PC + 0x001),
-				 r8 = d8;
-		unsigned char a8 = RAM::read(Registers.PC + 0x001);
-		log << "PC: " << Math::decHex(Registers.PC) << "  A:" << Math::decHex(Registers.A) << "  AF:" << Math::decHex(Registers.A*0x100 + Registers.F) << "  BC:" << Math::decHex(readBC()) << "  DE:" << Math::decHex(readDE()) << "  HL:" << Math::decHex(readHL()) << "  SP:" << Math::decHex(Registers.SP) << "  F:" << Math::decBin(Registers.F);
-		log << "  d16:" << Math::decHex(a16) << "  d8:" << Math::decHex(d8) << "  a8:" << Math::decHex(a8) << " aaaa: " << Math::decHex(RAM::read(Registers.PC + 0x001)*0x100) << "  bbbb:" << Math::decHex(RAM::read(Registers.PC + 0x002)) << "\n";
+		char     r8 = RAM::read(Registers.PC + 0x001);
+		log << "PC: " << Math::decHex(Registers.PC) << "  A:" << Math::decHex(Registers.A) << "  AF:" << Math::decHex(Registers.A*0x100 + Registers.F) << "  BC:" << Math::decHex(readBC()) << "  DE:" << Math::decHex(readDE()) << "  HL:" << Math::decHex(readHL()) << "  SP:" << Math::decHex(Registers.SP) << "  F:" << Math::decBin(Registers.F >> 4);
+		log << "  d16:" << Math::decHex(a16) << "  d8:" << Math::decHex(d8) << "  d8 (int):" << static_cast<int>(d8) << "  a8:" << Math::decHex(a8) << " aaaa: " << Math::decHex(RAM::read(Registers.PC + 0x001)*0x100) << "  bbbb:" << Math::decHex(RAM::read(Registers.PC + 0x002)) << "\n";
 
 		if(prefix != 0xCB){
 			//  Use normal op table
-
 			switch(prefix){
+			
 				#define x(unsetMask,setMask,op,byte,cycle,ins) case op:{ ins; Registers.F |= (setMask << 4); Registers.F &= ~(unsetMask << 4); cycles += cycle; if(!preservePC){ Registers.PC += byte; }; break;}
 				INSTRUCTIONS(x)
 				#undef x
 
-				default: std::cout << "UNKNOWN OPCODE: " << Math::decHex(prefix) << "\n";break;
+				default: Debug::emuLog("UNKNOWN OPCODE: " +  Math::decHex(prefix), Debug::LEVEL::ERROR); break;
 			}
 		} else {
+			// Use CB table
 			switch(opcode){
+			
 				#define y(unsetMask,setMask,op,byte,cycle,ins) case op:{ ins; Registers.F |= (setMask << 4); Registers.F &= ~(unsetMask << 4); cycles += cycle; Registers.PC += byte; break; }
 				INSTRUCTIONS_CB(y)
 				#undef y
 
-				default: std::cout << "UNKNOWN CB OPCODE: " << Math::decHex(opcode) << "\n";
+				default: Debug::emuLog("UNKNOWN CB OPCODE: " +  Math::decHex(opcode), Debug::LEVEL::ERROR); break;
 			}
-			// Use CB table
 		}
 		return true;
 	}
@@ -849,6 +848,10 @@ namespace CPU{
 		Read and write to the special registers
 		For convenience
 	*/
+	inline char16_t readAF(){
+		return Registers.A * 0x100 + Registers.F;
+	}
+
 	inline char16_t readHL(){
 		return Registers.H * 0x100 + Registers.L;
 	}
@@ -882,10 +885,19 @@ namespace CPU{
 		Registers.E = E;
 	}
 
+	inline void writeAF(char16_t data){
+		unsigned char A = data / 0x100,
+					  F = data - F*0x100;
+		Registers.A = A;
+		Registers.F = F;
+
+	}
+
 	inline void copyToC(int mask){
 		if(readC != mask){
 			Registers.F ^= 0x10;
 		}
 	}
+
 }  // namespace CPU
 
