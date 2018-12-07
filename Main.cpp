@@ -36,7 +36,7 @@ int main(int argc, char* argv[]){
 	}
 
 	//  Init graphics
-    bool ret = SDL_Init(SDL_INIT_EVERYTHING);
+    int ret = SDL_Init(SDL_INIT_EVERYTHING);
 	if(ret != 0){
 	    Debug::emuLog("SDL failed to start, emulator will run without a GUI", Debug::ERR);
 	    Config::setKeyState("DEBUG_MODE", "false");
@@ -48,6 +48,8 @@ int main(int argc, char* argv[]){
 	std::thread gbScreenThread(&Screen::gbScreenHandler);
     gbScreenThread.detach();
 
+    RAM::decodeHeader();
+    RAM::mountMemoryBanks();
 	Debug::emuLog("Starting CPU");
 	CPU::Registers.PC = 0x100;
 	CPU::start();

@@ -8,13 +8,14 @@ namespace CPU{
 	    unsigned char A, F, B, C, D, E, H, L;
 		bool IME;
 	};
+
+
 	extern Reg Registers;
 	extern bool emuHalt;
 	extern bool cpuHalt;
 	extern bool step;
 	extern bool continueExec;
 	extern bool reload;
-	//extern bool shouldDisableInts;
 	extern bool shouldEnableInts;
 	extern unsigned int freq;
 	extern double timerFreq;

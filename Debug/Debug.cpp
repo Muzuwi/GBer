@@ -3,6 +3,8 @@
 #include <deque>
 #include <SDL.h>
 #include <SDL_opengl.h>
+#include <Screen.hpp>
+#include <PPU.hpp>
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_impl_sdl.h"
 #include "../imgui/imgui_impl_opengl2.h"
@@ -309,6 +311,38 @@ namespace Debug{
 			ImGui::Begin("Trace");
 			for(std::string a : recentTraces){
 				ImGui::Text(a.c_str());
+			}
+			ImGui::End();
+
+
+			ImGui::Begin("Screen / PPU");
+			{
+				ImGui::SliderInt("Scale Screen", &Screen::scale, 1, 5);
+				ImGui::NewLine();
+				ImGui::Text(("LY: " + Math::decHex(RAM::RAM[0xFF44], 2)).c_str());
+				ImGui::Text(("cyclesSinceModeSwitch: " + std::to_string(PPU::cyclesSinceModeSwitch)).c_str());
+				ImGui::Text(("Fifo size: " + std::to_string(Screen::fifo.size())).c_str());
+
+				std::string mode;
+				switch(PPU::currentPpuMode){
+					case PPU::OAM:
+						mode = "OAM";
+						break;
+					case PPU::VBLANK:
+						mode = "VBlank";
+						break;
+					case PPU::HBLANK:
+						mode = "HBlank";
+						break;
+					case PPU::PIXTX:
+						mode = "Pixel Transfer";
+						break;
+				}
+				ImGui::Text(("PPU Mode: " + mode).c_str());
+				ImGui::Text(("Vblank Lines: " + std::to_string(PPU::vblankLines)).c_str());
+				ImGui::Text(("FIFO Fetches: " + std::to_string(PPU::pixelTransferFinishedFetches)).c_str());
+
+
 			}
 			ImGui::End();
 

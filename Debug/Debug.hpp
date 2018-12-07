@@ -17,6 +17,7 @@ namespace Debug{
 
 	extern std::deque<std::string> recentTraces;
 	extern int timer;
+	extern bool closed;
 	extern std::string command;
 	extern std::string menuText;
 	extern std::vector<char16_t> breakpoints;

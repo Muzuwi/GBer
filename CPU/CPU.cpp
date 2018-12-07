@@ -8,6 +8,7 @@
 #include "../Debug/Debug.hpp"
 #include "../Config/Config.hpp"
 #include "PPU.hpp"
+#include "Screen.hpp"
 /* 
 	Flag reading
 */
@@ -801,7 +802,7 @@ namespace CPU{
 	Reg Registers;
 
 	//  CPU Stuff
-	bool emuHalt = false, step = true, continueExec = false, reload = false, /*shouldDisableInts = false,*/ shouldEnableInts = false, cpuHalt = false;
+	bool emuHalt = false, step = true, continueExec = false, reload = false, shouldEnableInts = false, cpuHalt = false;
 	char16_t prevPC;
 	unsigned int freq = 4194304, freqDiv = 16384;
 	double timerFreq;
@@ -825,6 +826,9 @@ namespace CPU{
 				}
 				clearState();
 				Debug::recentTraces.clear();
+				PPU::cyclesSinceModeSwitch = 0;
+				PPU::currentPpuMode = PPU::OAM;
+				SDL_RenderClear(Screen::gbScreenRenderer);
 				Debug::menuText = "Reload completed";
 				Debug::timer = 120;
 				reload = false;
@@ -856,11 +860,8 @@ namespace CPU{
 				divCycles -= divEveryN;
 			}
 
-			PPU::handlePPU(cycles);
-
-
-
-
+			//PPU::handlePPU(cycles);
+            PPU::updateVariables();
 			if(emuHalt && Config::getKeyState("DEBUG_MODE") == "true"){
 				Debug::menuText = "Emulation halted";
 				Debug::timer = 240;
@@ -937,13 +938,13 @@ namespace CPU{
 				}
 			}
 
-			std::string trace = "PC: " + Math::decHex(Registers.PC) + "  AF:" + Math::decHex(Registers.A * 0x100 + Registers.F) + "  BC:" + Math::decHex(readBC()) + "  DE:" + Math::decHex(readDE()) + "  HL:" + Math::decHex(readHL()) + "  SP:" + Math::decHex(Registers.SP) + "  F:" + Math::decBin(Registers.F >> 4);
+			/*std::string trace = "PC: " + Math::decHex(Registers.PC) + "  AF:" + Math::decHex(Registers.A * 0x100 + Registers.F) + "  BC:" + Math::decHex(readBC()) + "  DE:" + Math::decHex(readDE()) + "  HL:" + Math::decHex(readHL()) + "  SP:" + Math::decHex(Registers.SP) + "  F:" + Math::decBin(Registers.F >> 4);
 			if (Debug::recentTraces.size() > 20) {
 				Debug::recentTraces.pop_front();
 				Debug::recentTraces.emplace_back(trace);
 			} else {
 				Debug::recentTraces.emplace_back(trace);
-			}
+			}*/
 		}
 
 		//  Turn off unused bits of register F
@@ -1031,8 +1032,9 @@ namespace CPU{
 		Registers.IME = false;
 		//shouldDisableInts = false;
 		shouldEnableInts = false;
+		RAM::mountMemoryBanks();
+		RAM::mountedBankNumber = 0;
 	}
-
 
 	/*
 		Read and write to the special registers
@@ -1077,7 +1079,7 @@ namespace CPU{
 
 	inline void writeAF(char16_t data){
 		unsigned char A = data / 0x100,
-					  F = data - F*0x100;
+					  F = data - A*0x100;
 		Registers.A = A;
 		Registers.F = F;
 

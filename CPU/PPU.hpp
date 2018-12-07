@@ -1,27 +1,15 @@
 #pragma once
 namespace PPU {
-    extern int cycleSinceModeSwitch, LY, SCX, SCY;
+    extern int LY, SCX, SCY;
     extern bool intLYC;
     extern bool intOAM;
     extern bool intVBL;
     extern bool intHBL;
-
-
-    struct PPUControl{
-        bool lcdEnabled;
-        bool windowDisplay;
-        bool objDisplay;
-        bool windowBgDisplay;
-        int objH;
-        int objW;
-    };
+    extern bool LYC_eq;
 
     struct AddrRange{
         int lower, higher;
     };
-
-
-    extern PPUControl LCDC;
 
     enum PPU_MODE {
         OAM = 2,
@@ -29,18 +17,12 @@ namespace PPU {
         HBLANK = 0,
         VBLANK = 1
     };
+
     extern PPU_MODE currentPpuMode;
-
-    struct OAMEntry{
-        int posX, posY, tileNo;
-        bool priority;
-        bool flipX, flipY;
-    };
-
-
-
-    void handlePPU(int);
-    void updateSTAT();
+    extern AddrRange windowTileMap, bgTileMap, bgWindowTileData;
+    extern int64_t cyclesSinceModeSwitch;
+    extern int vblankLines, pixelTransferFinishedFetches;
+    //void handlePPU(int64_t);
     void updateVariables();
-
+    void updateStat();
 }
