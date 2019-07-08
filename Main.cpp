@@ -1,58 +1,33 @@
-#include <thread>
-#include <iostream>
-#include "File/File.hpp"
-#include "Memory/RAM.hpp"
-#include "Math/Math.hpp"
-#include "Config/Config.hpp"
-#include "CPU/CPU.hpp"
-#include "Debug/Debug.hpp"
-#include "CPU/Screen.hpp"
+#include "Headers/Emulator.hpp"
 
-int main(int argc, char* argv[]){ 
-	Config::setDefaults();
-	if(!Config::parseArgs(argv, argc)){
-		return -1;
-	}
+int main(int argc, char* argv[]){
+    Emulator GBer;
+    //  Bind modules
+    GBer.init();
+    //  Set configuration
+    if(!GBer.getConfig()->parseArgs(argv, argc)){
+        return -1;
+    }
 
-	Debug::emuLog("Debug: " + Config::getKeyState("DEBUG_MODE") );
-	if(Config::getKeyState("CUSTOMBOOT") == "true"){
-		Debug::emuLog("Using custom boot image");
-		Debug::emuLog("Start rom location: " + Config::getKeyState("CUSTOMBOOT_LOCATION") );
-		RAM::bootRom = File::loadFromFile(Config::getKeyState("CUSTOMBOOT_LOCATION"));
-	}else{
-		Debug::emuLog("Bootrom location: " + Config::getKeyState("BOOTROM_LOCATION") );
-		RAM::bootRom = File::loadFromFile(Config::getKeyState("BOOTROM_LOCATION"));
-	}
+    GBer.getDebugger()->emuLog("GBer Rewrite starting");
+    if (GBer.getConfig()->isDebug()){
+        GBer.getDebugger()->emuLog("Debug mode is enabled");
+    } else {
+        GBer.getDebugger()->emuLog("Debug mode is disabled");
+    }
+    GBer.getDebugger()->emuLog("Filename: " + GBer.getConfig()->getFilename());
+    //  Load ROM file
+    GBer.getMemory()->loadROM(GBer.getConfig()->getFilename());
+    GBer.getDebugger()->emuLog("ROM file size: " + std::to_string(GBer.getMemory()->getSizeROM()) + " bytes");
 
-	Debug::emuLog("Boot rom " + std::to_string(RAM::bootRom.size()) + " bytes");
-	Debug::emuLog("Loading Bootrom into RAM..");
-	RAM::insert(RAM::bootRom, 0x0, RAM::bootRom.size(), 0, true);
+    //  Parse ROM header
+    GBer.getMemory()->decodeHeader();
 
-	if(Config::getKeyState("SKIP_ROM") != "true"){
-		RAM::romFile = File::loadFromFile(Config::getKeyState("ROM_LOCATION"));
-		Debug::emuLog("ROM File size " + std::to_string(RAM::romFile.size()) + " bytes");
-		Debug::emuLog("Loading app header into RAM..");
-		RAM::insert(RAM::romFile, 0x100, 0x50, 0x100, false);
-	}
+    GBer.getDebugger()->emuLog("Mounting ROM");
+    GBer.getMemory()->mountBanksRAM();
 
-	//  Init graphics
-    int ret = SDL_Init(SDL_INIT_EVERYTHING);
-	if(ret != 0){
-	    Debug::emuLog("SDL failed to start, emulator will run without a GUI", Debug::ERR);
-	    Config::setKeyState("DEBUG_MODE", "false");
-	}
-    if(Config::getKeyState("DEBUG_MODE") == "true"){
-		std::thread debuggerThread(&Debug::DebugWindowHandler);
-		debuggerThread.detach();
-	}
-	std::thread gbScreenThread(&Screen::gbScreenHandler);
-    gbScreenThread.detach();
-
-    RAM::decodeHeader();
-    RAM::mountMemoryBanks();
-	Debug::emuLog("Starting CPU");
-	CPU::Registers.PC = 0x100;
-	CPU::start();
+    GBer.getDebugger()->emuLog("Starting emulator");
+    GBer.start();
 
 	return 0;
 }
