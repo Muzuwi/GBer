@@ -54,4 +54,6 @@ public:
 
     void requestChangeROM(std::string newROM);
 
+    static int SDLEventAddedCallback(void* usrData, SDL_Event* event);
+
 };

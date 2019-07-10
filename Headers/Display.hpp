@@ -49,7 +49,7 @@ public:
     Keypad* getJoypad();
     int64_t getFrameDuration();
     void setFrameTime();
-    void handleEvent(SDL_Event& event);
+    void handleEvent(SDL_Event* event);
     unsigned int getWindowID();
     SDL_Window* getWindow();
 };

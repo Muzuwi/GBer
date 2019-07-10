@@ -281,18 +281,6 @@ inline void PPU::fetchCurrentLineSprite(uint8_t *pixels, const uint8_t *raw){
 
     }
 
-    //if(temp) emulator->getDebugger()->emuLog("#####################################");
-
-    /*if(RAM::RAM[LY] == 0x3D){
-        std::cout << "Sprites at ly" << Math::decHex(RAM::RAM[LY],2) << ": ";
-        for(unsigned int i = 0; i < count; i++){
-            OAM_Entry ent = spriteTable[i];
-            std::cout << Math::decHex(ent.posX,2) << " " << Math::decHex(ent.posY,2) << ", ";
-        }
-        std::cout << ", count: " << count << "\n";
-    }*/
-    //assert(count != SPRITES_PER_LY);
-
     //  Drawing the current scanline of OAM sprites
     for(size_t i = 0; i < count; i++){
         OAM_Entry entry = spriteTable[i];
@@ -351,7 +339,6 @@ inline void PPU::fetchCurrentLineSprite(uint8_t *pixels, const uint8_t *raw){
                     bgWindowNum = raw[x];
             assert(x < 160);
 
-            //  TODO: Wtf is this, is this even correct?
             if (!entry.priority && rawNum != 0) {
                 pixels[x] = num;
             } else if (bgWindowNum == 0 && rawNum != 0) {
@@ -385,7 +372,7 @@ inline void PPU::drawCurrentLine(){
     uint32_t* lineFramebufferData = new uint32_t[GAMEBOY_SCREEN_WIDTH] {0};
 
     //  Raw pixel number buffer, for sprite priority to work correctly
-    uint8_t * rawBgWindow = new uint8_t[GAMEBOY_SCREEN_WIDTH] {0};
+    uint8_t* rawBgWindow = new uint8_t[GAMEBOY_SCREEN_WIDTH] {0};
 
     //  If window/background is enabled
     if(lcdc.bgWindowDisplayPriority) {

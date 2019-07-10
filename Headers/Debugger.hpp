@@ -25,6 +25,9 @@ class Debugger{
     SDL_GLContext debuggerGLContext;
     int debuggerWindowID;
 
+    //  Pointer to the imgui context
+    ImGuiContext* context;
+
     //  Memory editor widget
     MemoryEditor memEdit;
 
@@ -85,7 +88,7 @@ public:
 
     void createWindowSDL();
 
-    void handleEvent(SDL_Event &event);
+    void handleEvent(SDL_Event* event);
 
     unsigned int getWindowID();
 
