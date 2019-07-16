@@ -9,5 +9,6 @@
 #include "Debugger/stack.hpp"
 #include "Debugger/vram.hpp"
 #include "Debugger/performance.hpp"
+#include "Debugger/apu.hpp"
 
 

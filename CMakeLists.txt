@@ -33,7 +33,7 @@ add_executable(GBer
         Debugger.cpp
         Emulator.cpp
         Main.cpp
-        )
+        Debugger/apu.hpp)
 
 
 

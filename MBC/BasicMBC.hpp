@@ -32,13 +32,13 @@ public:
 
     size_t getROMBankCount();
 
-    virtual bool handleWriteMBC(uint16_t address, uint8_t byte);
+    virtual bool handleWriteMBC(uint16_t address, uint8_t byte) {};
 
-    virtual uint8_t handleReadMBC(uint16_t address);
+    virtual uint8_t handleReadMBC(uint16_t address) {};
 
-    virtual bool flashEnabled();
+    virtual bool flashEnabled() {};
 
-    virtual void mountBanks();
+    virtual void mountBanks() {};
 
     virtual ~BasicMBC() = default;
 };

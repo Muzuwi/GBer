@@ -105,9 +105,13 @@ void Emulator::start(){
         }
 
         //  Draw the debug window if unpaused
-        if(config.isDebug() && !debug.isDebuggerPaused()){
+        //if(config.isDebug() && !debug.isDebuggerPaused()){
+            //debug.updateDebugWindow();
+        //}
+        if(config.isDebug() && (drawFrame || !cpu.doStep())){
             debug.updateDebugWindow();
         }
+
 
         //  Limit framerate
         //  TODO: FIX

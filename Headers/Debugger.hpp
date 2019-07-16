@@ -42,6 +42,7 @@ class Debugger{
     DebugStack stackWindow;
     DebugVRAM vramViewer;
     DebugPerformance performanceDebugger;
+    DebugAPU apuDebugger;
 
     //  ImGui IO
     ImGuiIO* io;
