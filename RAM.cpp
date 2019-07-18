@@ -30,11 +30,6 @@ uint8_t RAM::read(uint16_t address){
 
         //  Directional keys
         if(!(memory[P1] & 0x10)){
-            //  If opposing buttons are pressed, turn off one of them, or else everything crashes
-            //  TODO: Add config option to disable this
-            //  TODO: Should this change the actual JoypadState in the display class?
-            if(JoypadState->lP && JoypadState->rP) JoypadState->lP = false;
-            if(JoypadState->uP && JoypadState->dP) JoypadState->dP = false;
 
             uint8_t byte = 0xF;
             if(JoypadState->lP) byte &= ~KeyBitMap::LEFT;

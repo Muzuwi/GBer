@@ -123,6 +123,12 @@ void Display::setFrameTime() {
 }
 
 void Display::handleEvent(SDL_Event* event) {
+    //  Better input behavior
+    static bool leftHold = false,
+                upHold = false,
+                downHold = false,
+                rightHold = false;
+
     switch(event->type) {
         case SDL_WINDOWEVENT:
             if(event->window.event == SDL_WINDOWEVENT_CLOSE){
@@ -148,16 +154,40 @@ void Display::handleEvent(SDL_Event* event) {
                     joypadState.startP = false; break;
                 }
                 case SDLK_UP: {
-                    joypadState.uP = false; break;
+                    joypadState.uP = false;
+                    upHold = false;
+                    //  Restore previous input
+                    if(downHold){
+                        joypadState.dP = true;
+                    }
+                    break;
                 }
                 case SDLK_DOWN: {
-                    joypadState.dP = false; break;
+                    joypadState.dP = false;
+                    downHold = false;
+                    //  Restore previous input
+                    if(upHold){
+                        joypadState.uP = true;
+                    }
+                    break;
                 }
                 case SDLK_LEFT: {
-                    joypadState.lP = false; break;
+                    joypadState.lP = false;
+                    leftHold = false;
+                    //  Restore previous input
+                    if(rightHold){
+                        joypadState.rP = true;
+                    }
+                    break;
                 }
                 case SDLK_RIGHT: {
-                    joypadState.rP = false; break;
+                    joypadState.rP = false;
+                    rightHold = false;
+                    //  Restore previous input
+                    if(leftHold){
+                        joypadState.lP= true;
+                    }
+                    break;
                 }
                 default: break;
             }
@@ -185,22 +215,30 @@ void Display::handleEvent(SDL_Event* event) {
                     break;
                 }
                 case SDLK_UP: {
+                    upHold = true;
                     joypadState.uP = true;
+                    if(joypadState.dP) joypadState.dP = false;
                     emulator->getCPU()->wakeFromStop();
                     break;
                 }
                 case SDLK_DOWN: {
+                    downHold = true;
                     joypadState.dP = true;
+                    if(joypadState.uP) joypadState.uP = false;
                     emulator->getCPU()->wakeFromStop();
                     break;
                 }
                 case SDLK_LEFT: {
+                    leftHold = true;
                     joypadState.lP = true;
+                    if(joypadState.rP) joypadState.rP = false;
                     emulator->getCPU()->wakeFromStop();
                     break;
                 }
                 case SDLK_RIGHT: {
+                    rightHold = true;
                     joypadState.rP = true;
+                    if(joypadState.lP) joypadState.lP = false;
                     emulator->getCPU()->wakeFromStop();
                     break;
                 }

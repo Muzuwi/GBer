@@ -58,12 +58,11 @@ void Emulator::start(){
         if(ppu.getLCDC()->lcdEnable && !config.graphicsDisabled()){
             //  Draw new frame when ready
             if(drawFrame){
+                //  Fill the event queue and let the callback handle new events
+                SDL_PumpEvents();
                 display.updateWindow();
             }
         }
-
-        //  Fill the event queue and let the callback handle new events
-        SDL_PumpEvents();
 
         //  If a file dropped event has occured, try changing the ROM
         if(romChangeRequested){
