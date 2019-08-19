@@ -1,6 +1,6 @@
 #include <thread>
 #include <SDL2/SDL.h>
-#include "Headers/RAM.hpp"
+#include <Headers/Display.hpp>
 #include "Headers/Emulator.hpp"
 
 /*
@@ -12,6 +12,7 @@ void Emulator::init(){
     debug.bind(this);
     display.bind(this);
     cpu.bind(this);
+    apu.bind(this);
 }
 
 /*
@@ -20,23 +21,16 @@ void Emulator::init(){
 void Emulator::start(){
     //  Initialize graphic libraries and create main emulator window
     if(!config.graphicsDisabled()){
-        display.initializeGraphicLibs();
-        display.createGameWindow();
+        display.initialize();
     }
 
-    //  Create debug window if in debug mode
-    if(config.isDebug()){
-        debug.createDebugWindow();
-    }
+    apu.init();
 
     //  Reset CPU state
     cpu.start();
 
-    //  My patent-pending anti-undefined-behavior-device (tm)
-    display.setFrameTime();
-
     //  Setup callback for events
-    SDL_AddEventWatch(Emulator::SDLEventAddedCallback, this);
+    //SDL_AddEventWatch(Emulator::SDLEventAddedCallback, this);
 
     //  Main emu loop
     while(!emuHalt){
@@ -52,6 +46,14 @@ void Emulator::start(){
         //  Update PPU-related variables
         ppu.updateVariables();
 
+        //  Update APU
+        apu.update();
+
+        //  Pump events (on windows)
+#ifdef _WIN32
+        //SDL_PumpEvents();
+#endif
+
         //  Update PPU status
         bool drawFrame = ppu.updateModePPU(taken);
         //  If LCD is enabled
@@ -59,75 +61,29 @@ void Emulator::start(){
             //  Draw new frame when ready
             if(drawFrame){
                 //  Fill the event queue and let the callback handle new events
+#ifdef __linux__
                 SDL_PumpEvents();
+#endif
+                SDL_Event event;
+                while(SDL_PollEvent(&event)){
+                    display.handleEvent(&event);
+                }
                 display.updateWindow();
             }
         }
 
         //  If a file dropped event has occured, try changing the ROM
         if(romChangeRequested){
-            //  Check if the file is valid
-            if(!config.setNewFilename(newRomFile)){
-                //  File invalid, cancel load
-                debug.emuLog("Failed to load ROM! " + newRomFile + ".");
-                romChangeRequested = false;
-                newRomFile = "";
-            } else {
-                //  File valid, start loading new ROM
-                //  Unmount current RAM and save flash to disk
-                memory.unmountRAM();
-
-                debug.emuLog("#############################################");
-                //  Reload state
-                debug.emuLog("Loading " + newRomFile);
-                //  Load ROM file
-                memory.loadROM(config.getFilename());
-                debug.emuLog("Filename: " + config.getFilename());
-                debug.emuLog("ROM file size: " + std::to_string(memory.getSizeROM()) + " bytes");
-                //  Parse ROM header
-                debug.emuLog("Decoding new ROM header..");
-                memory.decodeHeader();
-                debug.emuLog("Reloading the emulator");
-                reload();
-
-
-                debug.emuLog("Mounting ROM");
-                memory.mountBanksRAM();
-
-                debug.emuLog("ROM change successful!");
-
-                romChangeRequested = false;
-                newRomFile = "";
-
-                continue;
-            }
+            //  If the change was successful, start from the beginning
+            if(handleChangeROM()) continue;
         }
-
-        //  Draw the debug window if unpaused
-        //if(config.isDebug() && !debug.isDebuggerPaused()){
-            //debug.updateDebugWindow();
-        //}
-        if(config.isDebug() && (drawFrame || !cpu.doStep())){
-            debug.updateDebugWindow();
-        }
-
-
-        //  Limit framerate
-        //  TODO: FIX
-        //if(drawFrame){
-        //    if(display.getFrameDuration() < 1000.0/60.0){
-        //        std::this_thread::sleep_for(std::chrono::milliseconds((int)(1000.0/60.0)-display.getFrameDuration()));
-        //    }
-        //    display.setFrameTime();
-        //}
-
+        //  TODO: Limit framerate
     }
+    /*
+     *  End of main emu loop
+     */
 
-    display.destroyGameWindow();
-    if(config.isDebug()){
-        debug.destroyDebugWindow();
-    }
-    SDL_Quit();
+    display.terminate();
     memory.unmountRAM();
 
     debug.emuLog("Bye bye!");
@@ -141,7 +97,7 @@ void Emulator::reload(){
     memory.reload();
     ppu.reload();
     display.reload();
-    debug.createDebugTooltip("Reload completed", 120);
+    display.createDebugTooltip("Reload completed", 120);
     shouldReload = false;
 }
 
@@ -180,10 +136,6 @@ void Emulator::halt(){
     emuHalt = true;
 }
 
-bool Emulator::isHalted(){
-    return emuHalt;
-}
-
 /*
  *  Trigger an emulator reload
  */
@@ -192,25 +144,13 @@ void Emulator::triggerReload() {
 }
 
 /*
- *  Manages SDL events across both threads (Main/Debugger)
+ *  Enable/disable the debugger
  */
-void Emulator::handleEventsSDL() {
-    //SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
-    //SDL_Event event;
-    //while(SDL_PollEvent(&event)){
-    //    //  Dispatch events to window event handlers
-    //    if(event.window.windowID == display.getWindowID() || (event.type == SDL_DROPFILE && event.drop.windowID == display.getWindowID())) display.handleEvent(event);
-    //    else if(config.isDebug() && event.window.windowID == debug.getWindowID()) {
-    //        debug.handleEvent(event);
-    //    } else {
-    //        if(event.type == SDL_QUIT) {
-    //            debug.emuLog("SIGQUIT received!");
-    //            halt();
-    //        }
-    //        continue;
-    //    }
-    //}
+void Emulator::triggerToggleDebugger() {
+    config.toggleDebug();
+    display.eventDebugStatusSwitched();
 }
+
 
 /*
  *  Called when a new rom file is dropped onto the emulator window
@@ -219,6 +159,48 @@ void Emulator::handleEventsSDL() {
 void Emulator::requestChangeROM(std::string newROM) {
     newRomFile = newROM;
     romChangeRequested = true;
+}
+
+/*
+ *  Called when a ROM change is requested, by a drag-and-drop event or otherwise.
+ *  Returns true when the ROM was loaded successfully, otherwise false
+ */
+bool Emulator::handleChangeROM() {
+    //  Check if the file is valid
+    if(!config.setNewFilename(newRomFile)){
+        //  File invalid, cancel load
+        debug.emuLog("Failed to load ROM! " + newRomFile + ".");
+        romChangeRequested = false;
+        newRomFile = "";
+        return false;
+    } else {
+        //  File valid, start loading new ROM
+        //  Unmount current RAM and save flash to disk
+        memory.unmountRAM();
+
+        debug.emuLog("#############################################");
+        //  Reload state
+        debug.emuLog("Loading " + newRomFile);
+        //  Load ROM file
+        memory.loadROM(config.getFilename());
+        debug.emuLog("Filename: " + config.getFilename());
+        debug.emuLog("ROM file size: " + std::to_string(memory.getSizeROM()) + " bytes");
+        //  Parse ROM header
+        debug.emuLog("Decoding new ROM header..");
+        memory.decodeHeader();
+        debug.emuLog("Reloading the emulator");
+        reload();
+
+        debug.emuLog("Mounting ROM");
+        memory.mountBanksRAM();
+
+        debug.emuLog("ROM change successful!");
+
+        romChangeRequested = false;
+        newRomFile = "";
+
+        return true;
+    }
 }
 
 /*
@@ -231,10 +213,8 @@ int SDLCALL Emulator::SDLEventAddedCallback(void *usrData, SDL_Event *event) {
 
     auto display = static_cast<Emulator*>(usrData)->getDisplay();
     auto debug = static_cast<Emulator*>(usrData)->getDebugger();
-    auto config = static_cast<Emulator*>(usrData)->getConfig();
 
     if(event->window.windowID == display->getWindowID() || (event->type == SDL_DROPFILE && event->drop.windowID == display->getWindowID())) display->handleEvent(event);
-    else if(config->isDebug() && event->window.windowID == debug->getWindowID()) debug->handleEvent(event);
     else {
         if(event->type == SDL_QUIT) {
             debug->emuLog("SIGQUIT received!");
@@ -243,3 +223,4 @@ int SDLCALL Emulator::SDLEventAddedCallback(void *usrData, SDL_Event *event) {
     }
     return 0;
 }
+

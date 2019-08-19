@@ -64,7 +64,7 @@ public:
                 if(std::string("").compare(buffer) && (read || write)){
                     int casted = strtol(buffer, NULL, 16);
                     if(!(casted <= 0 || casted > 0xFFFF)){
-                        addMemoryBreakpoint(casted, read, write, showVal, memoryBreakpointValue);
+                        addMemoryBreakpoint(MemoryBreakpoint(casted, read, write, showVal, memoryBreakpointValue));
                     }
                 }
             }
@@ -137,56 +137,6 @@ public:
         }
         ImGui::End();
 
-    }
-
-    void addAddressBreakpoint(uint16_t address){
-        addressBreakpoints.push_back(address);
-    }
-
-    void addOpBreakpoint(uint8_t op){
-        instructionBreakpoints.push_back(op);
-    }
-
-    void addMemoryBreakpoint(uint16_t address, bool read, bool write, bool val, uint8_t expectedValue){
-        memoryBreakpoints.push_back(MemoryBreakpoint(address, read, write, val, expectedValue));
-    }
-
-    void addMemoryBreakpoint(MemoryBreakpoint breakpoint){
-        memoryBreakpoints.push_back(breakpoint);
-    }
-
-    bool checkAddressBreakpoint(uint16_t address){
-        for(uint16_t addr : addressBreakpoints){
-            if(addr == address) return true;
-        }
-        return false;
-    }
-
-    bool checkInstructionBreakpoint(uint8_t op){
-        for(uint8_t opcode : instructionBreakpoints){
-            if(op == opcode) return true;
-        }
-        return false;
-    }
-
-    bool checkMemoryBreakpoint(uint16_t address){
-        for(MemoryBreakpoint breakpoint : memoryBreakpoints){
-            if(breakpoint.addr == address && breakpoint.r) return true;
-        }
-        return false;
-    }
-
-    bool checkMemoryBreakpoint(uint16_t address, uint8_t byte){
-        for(MemoryBreakpoint breakpoint : memoryBreakpoints){
-            if(breakpoint.addr == address && breakpoint.w){
-                if(breakpoint.v){
-                    if(breakpoint.val == byte) return true;
-                } else {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
 };

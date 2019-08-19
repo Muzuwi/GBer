@@ -16,7 +16,7 @@ void RAM::bind(Emulator* newEmulator){
  */
 uint8_t RAM::read(uint16_t address){
     if(emulator->getConfig()->isDebug()){
-        emulator->getDebugger()->handleMemoryBreakpoint(address);
+        emulator->getDebugger()->handleMemoryBreakpoint(MemoryBreakpoint(address, true, false, false));
     }
 
     //  When extRAM is disabled, any reads from that area should return 0xFF
@@ -82,7 +82,7 @@ void RAM::poke(uint16_t address, uint8_t value){
 bool RAM::write(uint16_t address, uint8_t byte){
     if(emulator->getConfig()->isDebug()){
         //  TODO: FIX
-        emulator->getDebugger()->handleMemoryBreakpoint(address, byte);
+        emulator->getDebugger()->handleMemoryBreakpoint(MemoryBreakpoint(address, false, true, true, byte));
     }
 
     bool writable = mbc->handleWriteMBC(address, byte);
@@ -105,10 +105,13 @@ bool RAM::write(uint16_t address, uint8_t byte){
         if (address > 0xFFFF || address < 0x0) {
             emulator->getDebugger()->emuLog(
                     "Failed writing " + Utils::decHex(byte) + " to invalid address " + Utils::decHex(address),
-                    emulator->getDebugger()->ERR);
+                    LOGLEVEL::ERR);
             return false;
         } else if ((address >= 0xFF4C && address < 0xFF80) ||
                    (address >= 0xFEA0 && address < 0xFF00)) {
+            return false;
+        } else if (address >= 0x0 && address <= 0x7FFF) {
+            //  Tried writing to ROM
             return false;
         } else if ((address >= 0xC000) && (address <= 0xDE00)) {        //  Echo RAM
             memory[address] = byte;
@@ -117,12 +120,16 @@ bool RAM::write(uint16_t address, uint8_t byte){
             memory[address] = byte;
             memory[address - 0x2000] = byte;
         } else if (address == DIV || address == LY) {
+            //  TODO: Apparently writing doesn't actually reset this
             memory[address] = 0;
         } else {
             memory[address] = byte;
         }
 
         if (address == DMA) {
+            if(emulator->getPPU()->getPPUMode() != PPU_MODE::VBLANK){
+                emulator->getDebugger()->emuLog("DMA transfer from invalid mode!", LOGLEVEL::ERR);
+            }
             // TODO: This might screw up if ppu is in incorrect mode
             if (byte > 0 && byte <= 0xF1) {
                 //emulator->getDebugger()->emuLog("OAM transfer from " + Utils::decHex(byte), emulator->getDebugger()->INFO);
@@ -211,8 +218,9 @@ void RAM::decodeHeader(){
     auto Debug = emulator->getDebugger();
 
     Debug->emuLog(" ########## App Header ##########");
+    //  The rom doesn't have a header
     if(romFile.size() < 0x150){
-        Debug->emuLog("Malformed ROM detected! Invalid size (expected romSize >= 0x150, got " + std::to_string(romFile.size()) + ")", Debug->ERR);
+        Debug->emuLog("Malformed ROM detected! Invalid size (expected romSize >= 0x150, got " + std::to_string(romFile.size()) + ")", LOGLEVEL::ERR);
         assert(romFile.size() >= 0x150);
     }
 
@@ -270,7 +278,7 @@ void RAM::decodeHeader(){
             mbc->bindMBC(this, emulator->getDebugger());
             break;
         default:
-            Debug->emuLog("Error creating an MBC object! Type not implemented", Debug->ERR);
+            Debug->emuLog("Error creating an MBC object! Type not implemented", LOGLEVEL::ERR);
             std::terminate();
             break;
     }
@@ -350,7 +358,7 @@ void RAM::mountBanksRAM(){
             emulator->getDebugger()->emuLog("Loading flash from save.");
             flash = Utils::loadFromFile(emulator->getConfig()->getSavename());
             if(flash.size() != mbc->getFlashSize()){
-                emulator->getDebugger()->emuLog("External flash size does not match header-specified Flash size! Skipping..", emulator->getDebugger()->ERR);
+                emulator->getDebugger()->emuLog("External flash size does not match header-specified Flash size! Skipping..", LOGLEVEL::ERR);
                 flash.clear();
                 flash.resize(mbc->getFlashSize());
             }
@@ -392,7 +400,7 @@ void RAM::mountBanksRAM(){
             break;
 
         default:
-            emulator->getDebugger()->emuLog("Unimplemented MBC type of " + controllerTypeLabel[mbcType] + "!", emulator->getDebugger()->ERR);
+            emulator->getDebugger()->emuLog("Unimplemented MBC type of " + controllerTypeLabel[mbcType] + "!", LOGLEVEL::ERR);
             emulator->halt();
             break;
     }
@@ -409,6 +417,7 @@ void RAM::unmountRAM(){
         save.write((char*)&flash[0], mbc->getFlashSize());
         save.close();
     }
+    //  TODO: move this somewhere else?
     delete mbc;
 }
 

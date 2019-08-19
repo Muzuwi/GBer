@@ -35,7 +35,6 @@ bool Config::parseArgs(char **argv, int argc) {
             bootromFilename = argv[i+1];
             std::string temp = argv[i+1];
             temp.replace(temp.begin(), temp.end(),"");
-            //  TODO: Store filename to use in loading save files
         }else if(!std::string("-debug").compare(argv[i])){
             debugMode = true;
         }else if(!std::string("-rom").compare(argv[i]) && (argv[i+1] != NULL)){
@@ -127,4 +126,8 @@ bool Config::setNewFilename(std::string filename) {
     } else {
         return false;
     }
+}
+
+void Config::toggleDebug() {
+    debugMode = !debugMode;
 }

@@ -20,3 +20,10 @@ struct Reg{
     uint8_t A, F, B, C, D, E, H, L;
     bool IME;
 };
+
+//  Log window error level
+enum LOGLEVEL{
+    ERR=10,
+    WARN=5,
+    INFO=1
+};

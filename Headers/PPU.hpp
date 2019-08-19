@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <assert.h>
+#include <cassert>
 #include "Headers/GameboyDefinitions.hpp"
 
 class Emulator;

@@ -4,8 +4,8 @@
 #include <string>
 #include <map>
 #include "Headers/GameboyDefinitions.hpp"
+#include "Headers/Utils.hpp"
 #include "MBC/BasicMBC.hpp"
-#include "Utils.hpp"
 
 class Emulator;
 
@@ -32,6 +32,7 @@ class RAM{
     //  Is flash present?
     bool flashPresent = false;
 
+    //  It's 2019 and there's still no way to get a string from an enum
     std::map<MBC_Type, std::string> controllerTypeLabel = {
             {ROM , "ROM"},
             {MBC1 , "MBC1"},

@@ -1,10 +1,12 @@
 #pragma once
+#include <string>
 #include "Headers/PPU.hpp"
 #include "Headers/Debugger.hpp"
 #include "Headers/Config.hpp"
 #include "Headers/Display.hpp"
 #include "Headers/LR35902.hpp"
 #include "Headers/RAM.hpp"
+#include "Headers/APU.hpp"
 
 class Emulator {
     //  Emulator memory class
@@ -19,18 +21,22 @@ class Emulator {
     Display display;
     //  CPU class
     LR35902 cpu;
+    //  APU class
+    APU apu;
 
     //  Configuration
     bool emuHalt = false, shouldReload = false, romChangeRequested = false;
     //  Requested ROM filename
     std::string newRomFile;
 
+    void reload();
+
+    bool handleChangeROM();
+
 public:
     void init();
 
     void start();
-
-    void reload();
 
     Config *getConfig();
 
@@ -46,11 +52,9 @@ public:
 
     void halt();
 
-    bool isHalted();
-
     void triggerReload();
 
-    void handleEventsSDL();
+    void triggerToggleDebugger();
 
     void requestChangeROM(std::string newROM);
 

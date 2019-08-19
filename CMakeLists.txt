@@ -5,10 +5,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../)
 set(CMAKE_CXX_STANDARD 17)
 add_definitions(-O2)
 add_definitions(-gdwarf-2)
-add_definitions(-pg)
 add_definitions(-Wall)
 add_definitions(-pedantic)
-
 
 include_directories(${CMAKE_SOURCE_DIR}/)
 
@@ -34,7 +32,7 @@ add_executable(GBer
         Debugger.cpp
         Emulator.cpp
         Main.cpp
-        )
+        APU.cpp Debugger/DebuggerModules.cpp Debugger/DebuggerModules.hpp)
 
 
 
@@ -51,5 +49,3 @@ if(UNIX)
     target_link_libraries(GBer -lSDL2main)
     target_link_libraries(GBer -lSDL2)
 endif(UNIX)
-
-target_link_libraries(GBer -pg)

@@ -1,5 +1,8 @@
 #include "Headers/Utils.hpp"
 
+/*
+ *  This file contains helper functions used throughout the emulator
+ */
 namespace Utils{
     /*
         Returns hex form of given integer
@@ -15,6 +18,7 @@ namespace Utils{
     }
 
     //  Because Mingw sucks and <filesystem> is broken
+    //  TODO: sometimes breaks
     bool exists(std::string path){
         std::ifstream infile(path);
         return infile.good();
