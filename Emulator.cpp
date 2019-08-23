@@ -29,9 +29,6 @@ void Emulator::start(){
     //  Reset CPU state
     cpu.start();
 
-    //  Setup callback for events
-    //SDL_AddEventWatch(Emulator::SDLEventAddedCallback, this);
-
     //  Main emu loop
     while(!emuHalt){
         if(shouldReload) reload();
@@ -43,16 +40,14 @@ void Emulator::start(){
         //  Update the DIV registers
         cpu.updateTimers(taken);
 
+        //  Advance any memory transfers
+        memory.updateTransfers(taken);
+
         //  Update PPU-related variables
         ppu.updateVariables();
 
         //  Update APU
         apu.update();
-
-        //  Pump events (on windows)
-#ifdef _WIN32
-        //SDL_PumpEvents();
-#endif
 
         //  Update PPU status
         bool drawFrame = ppu.updateModePPU(taken);
@@ -60,10 +55,6 @@ void Emulator::start(){
         if(ppu.getLCDC()->lcdEnable && !config.graphicsDisabled()){
             //  Draw new frame when ready
             if(drawFrame){
-                //  Fill the event queue and let the callback handle new events
-#ifdef __linux__
-                SDL_PumpEvents();
-#endif
                 SDL_Event event;
                 while(SDL_PollEvent(&event)){
                     display.handleEvent(&event);
@@ -72,12 +63,31 @@ void Emulator::start(){
             }
         }
 
+        //  If in step mode, update the frame immediately
+        if(!cpu.doStep()){
+            SDL_Event event;
+            while(SDL_PollEvent(&event)){
+                display.handleEvent(&event);
+            }
+            display.updateWindow();
+        }
+
         //  If a file dropped event has occured, try changing the ROM
         if(romChangeRequested){
             //  If the change was successful, start from the beginning
             if(handleChangeROM()) continue;
         }
-        //  TODO: Limit framerate
+
+        //  Limit framerate
+        if(drawFrame && ppu.getLCDC()->lcdEnable && !config.graphicsDisabled() && !config.isDebug()){
+            auto time = display.updateFrameTime();
+            auto target = 1000.0/60.0;
+            if(time.count() < target){
+                auto sleepFor = target - time.count();
+                auto ms = std::chrono::duration<double, std::milli>(sleepFor);
+                std::this_thread::sleep_for(ms);
+            }
+        }
     }
     /*
      *  End of main emu loop
@@ -204,23 +214,10 @@ bool Emulator::handleChangeROM() {
 }
 
 /*
- *  SDL event callback, processes events for the emulator windows
- *  A pointer to the emulator object is passed in 'usrData' when setting the callback
+ *  Triggers a breakpoint with a specified message
  */
-int SDLCALL Emulator::SDLEventAddedCallback(void *usrData, SDL_Event *event) {
-    if(usrData == nullptr) return -1;
-    if(event == nullptr) return -1;
-
-    auto display = static_cast<Emulator*>(usrData)->getDisplay();
-    auto debug = static_cast<Emulator*>(usrData)->getDebugger();
-
-    if(event->window.windowID == display->getWindowID() || (event->type == SDL_DROPFILE && event->drop.windowID == display->getWindowID())) display->handleEvent(event);
-    else {
-        if(event->type == SDL_QUIT) {
-            debug->emuLog("SIGQUIT received!");
-            static_cast<Emulator*>(usrData)->halt();
-        }
-    }
-    return 0;
+void Emulator::triggerBreak(std::string message) {
+    cpu.setStep(false);
+    cpu.setContinueExec(false);
+    display.createDebugTooltip(message, 180);
 }
-

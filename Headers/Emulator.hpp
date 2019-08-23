@@ -52,12 +52,11 @@ public:
 
     void halt();
 
+    void triggerBreak(std::string message);
+
     void triggerReload();
 
     void triggerToggleDebugger();
 
     void requestChangeROM(std::string newROM);
-
-    static int SDLEventAddedCallback(void* usrData, SDL_Event* event);
-
 };

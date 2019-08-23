@@ -839,8 +839,13 @@ inline void LR35902::decodeInstruction(uint8_t prefix, uint8_t op, uint8_t immed
                 INSTRUCTIONS(x)
                 #undef x
             default: {
-                emulator->getDebugger()->emuLog("UNKNOWN OPCODE at " + Utils::decHex(Registers.PC) + ": " +  Utils::decHex(prefix), LOGLEVEL::ERR);
-                emulator->halt();
+                emulator->getDebugger()->emuLog("UNKNOWN OPCODE at " + Utils::decHex(Registers.PC) + ": " +  Utils::decHex(prefix, 2), LOGLEVEL::ERR);
+                if(emulator->getConfig()->isDebug()){
+                    this->continueExec = false;
+                    this->step = false;
+                } else {
+                    emulator->halt();
+                }
                 break;
             }
         }
@@ -853,7 +858,12 @@ inline void LR35902::decodeInstruction(uint8_t prefix, uint8_t op, uint8_t immed
 
             default: {
                 emulator->getDebugger()->emuLog("UNKNOWN CB OPCODE at " + Utils::decHex(Registers.PC) + ": " +  Utils::decHex(op), LOGLEVEL::ERR);
-                emulator->halt();
+                if(emulator->getConfig()->isDebug()){
+                    this->continueExec = false;
+                    this->step = false;
+                } else {
+                    emulator->halt();
+                }
                 break;
             }
         }

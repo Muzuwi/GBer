@@ -1,4 +1,5 @@
 //#include "Headers/Debugger_Rewrite.hpp"
+#include <Headers/RAM.hpp>
 #include "Headers/Emulator.hpp"
 #include "Headers/RAM.hpp"
 #include "MBC/MBC1.hpp"
@@ -15,12 +16,23 @@ void RAM::bind(Emulator* newEmulator){
  *  Read a byte from memory
  */
 uint8_t RAM::read(uint16_t address){
+    //  If an OAM transfer is in progress
+    if(!CurrentOAMTransfer.completed){
+        if(address < 0xFF80 || address > 0xFFFE){
+            emulator->getDebugger()->emuLog(
+                    "Invalid memory access, tried reading from " + Utils::decHex(address) + ", which is not HRAM, during an OAM transfer",
+                    LOGLEVEL::WARN);
+            return false;
+        }
+    }
+
+    //  Breakpoints
     if(emulator->getConfig()->isDebug()){
         emulator->getDebugger()->handleMemoryBreakpoint(MemoryBreakpoint(address, true, false, false));
     }
 
     //  When extRAM is disabled, any reads from that area should return 0xFF
-    if(address >= 0xA000 && address <= 0xBFFF && (memory[0x0147] == MBC1_RAM_BAT || memory[0x0147] == MBC1_RAM)){
+    if(address >= 0xA000 && address <= 0xBFFF && mbc->supports(MBC_Flash)){
         if(!mbc->flashEnabled()) return 0xFF;
     }
 
@@ -80,11 +92,22 @@ void RAM::poke(uint16_t address, uint8_t value){
  *  Write a byte into memory
  */
 bool RAM::write(uint16_t address, uint8_t byte){
+    //  If an OAM transfer is in progress
+    if(!CurrentOAMTransfer.completed){
+        if(address < 0xFF80 || address > 0xFFFE){
+            emulator->getDebugger()->emuLog(
+                    "Invalid memory access, tried writing to " + Utils::decHex(address) + ", which is not HRAM, during an OAM transfer",
+                    LOGLEVEL::WARN);
+            return false;
+        }
+    }
+
+    //  Breakpoints
     if(emulator->getConfig()->isDebug()){
-        //  TODO: FIX
         emulator->getDebugger()->handleMemoryBreakpoint(MemoryBreakpoint(address, false, true, true, byte));
     }
 
+    //  Check if MBC allows writing to this area
     bool writable = mbc->handleWriteMBC(address, byte);
 
     if(address == LCDC && (byte & 0x80) && !(memory[LCDC] & 0x80) ){
@@ -101,6 +124,7 @@ bool RAM::write(uint16_t address, uint8_t byte){
         memory[STAT] = (memory[STAT] & 0b11111100) | 0b00;
     }
 
+    //  Write if possible
     if(writable) {
         if (address > 0xFFFF || address < 0x0) {
             emulator->getDebugger()->emuLog(
@@ -120,23 +144,14 @@ bool RAM::write(uint16_t address, uint8_t byte){
             memory[address] = byte;
             memory[address - 0x2000] = byte;
         } else if (address == DIV || address == LY) {
-            //  TODO: Apparently writing doesn't actually reset this
-            memory[address] = 0;
+            //  Read only
+            return false;
         } else {
             memory[address] = byte;
         }
 
         if (address == DMA) {
-            if(emulator->getPPU()->getPPUMode() != PPU_MODE::VBLANK){
-                emulator->getDebugger()->emuLog("DMA transfer from invalid mode!", LOGLEVEL::ERR);
-            }
-            // TODO: This might screw up if ppu is in incorrect mode
-            if (byte > 0 && byte <= 0xF1) {
-                //emulator->getDebugger()->emuLog("OAM transfer from " + Utils::decHex(byte), emulator->getDebugger()->INFO);
-                for (int i = 0; i < 0xA0; i++) {
-                    memory[0xFE00 + i] = memory[byte * 0x100 + i];
-                }
-            }
+            this->beginTransferOAM(byte << 8);
         }
 
         if (address == SCTRL && byte == 0x81) {
@@ -249,39 +264,82 @@ void RAM::decodeHeader(){
 
     //  Create an MBC object
     switch(mbcType){
-        case ROM:
+        case ROM: {
             //  Bind a dummy MBC
             mbc = new class ROM();
             mbc->bindMBC(this, emulator->getDebugger());
             break;
+        }
         case MBC1:
         case MBC1_RAM:
-        case MBC1_RAM_BAT:
-            mbc = new class MBC1();
+        case MBC1_RAM_BAT:{
+            MBCFlags flags = MBC_MBC1;
+            if(mbcType == MBC1_RAM_BAT) flags |= MBC_Battery;
+            if(mbcType == MBC1_RAM || mbcType == MBC1_RAM_BAT) flags |= MBC_Flash;
+
+            mbc = new class MBC1(flags);
             mbc->bindMBC(this, emulator->getDebugger());
             break;
+        }
         case MBC3:
         case MBC3_RAM:
         case MBC3_RAM_BAT:
         case MBC3_RAM_TIM_BAT:
-        case MBC3_TIM_BAT:
-            mbc = new class MBC3();
+        case MBC3_TIM_BAT: {
+            MBCFlags flags = MBC_MBC3;
+            if(mbcType == MBC3_RAM_BAT || mbcType == MBC3_RAM_TIM_BAT || mbcType == MBC3_TIM_BAT) flags |= MBC_Battery;
+            if(mbcType == MBC3_RAM || mbcType == MBC3_RAM_BAT || mbcType == MBC3_TIM_BAT) flags |= MBC_Flash;
+            if(mbcType == MBC3_TIM_BAT || mbcType == MBC3_RAM_TIM_BAT) flags |= MBC_Timer;
+
+            mbc = new class MBC3(flags);
             mbc->bindMBC(this, emulator->getDebugger());
             break;
+        }
         case MBC5:
         case MBC5_RAM:
         case MBC5_RAM_BAT:
         case MBC5_RAM_BAT_RUMBLE:
         case MBC5_RAM_RUMBLE:
-        case MBC5_RUMBLE:
-            mbc = new class MBC5();
+        case MBC5_RUMBLE:{
+            MBCFlags flags = MBC_MBC5;
+            if(mbcType != MBC5 && mbcType != MBC5_RUMBLE) flags |= MBC_Flash;
+            if(mbcType == MBC5_RAM_BAT || mbcType == MBC5_RAM_BAT_RUMBLE) flags |= MBC_Battery;
+            if(mbcType == MBC5_RAM_BAT_RUMBLE || mbcType == MBC5_RAM_RUMBLE || mbcType == MBC5_RUMBLE) flags |= MBC_Rumble;
+
+            mbc = new class MBC5(flags);
             mbc->bindMBC(this, emulator->getDebugger());
             break;
+        }
         default:
             Debug->emuLog("Error creating an MBC object! Type not implemented", LOGLEVEL::ERR);
             std::terminate();
             break;
     }
+
+    std::string features;
+    if(mbc->supports(MBC_MBC1)){
+        features += "MBC1 ";
+    } else if(mbc->supports(MBC_MBC2)){
+        features += "MBC2 ";
+    } else if(mbc->supports(MBC_MBC3)){
+        features += "MBC3 ";
+    } else if(mbc->supports(MBC_MBC5)){
+        features += "MBC5 ";
+    }
+
+    if(mbc->supports(MBC_Flash)){
+        features += "Flash ";
+    }
+    if(mbc->supports(MBC_Timer)){
+        features += "Timer ";
+    }
+    if(mbc->supports(MBC_Battery)){
+        features += "Battery ";
+    }
+    if(mbc->supports(MBC_Rumble)){
+        features += "Rumble ";
+    }
+    Debug->emuLog("MBC features: " + features);
 
     Debug->emuLog("ROM Size: " + std::to_string(2 << (romFile[0x0148])) + " banks, " + std::to_string(32*(1 << romFile[0x0148])) + "kb");
     Debug->emuLog("ROM Version: " + std::to_string(romFile[0x014C]));
@@ -462,4 +520,54 @@ uint8_t* RAM::getROMBasePointer() {
  */
 size_t RAM::getSizeFlash() {
     return flash.size();
+}
+
+void RAM::beginTransferOAM(uint16_t source) {
+    if(emulator->getPPU()->getPPUMode() != PPU_MODE::VBLANK){
+        std::string mode;
+        switch(emulator->getPPU()->getPPUMode()){
+            case PPU_MODE::HBLANK:
+                mode = "HBlank";
+                break;
+            case PPU_MODE::OAM:
+                mode = "OAM";
+                break;
+            case PPU_MODE::PIXTX:
+                mode = "Pixel Transfer (wtf?)";
+                break;
+        }
+        emulator->getDebugger()->emuLog("Tried triggering DMA transfer from invalid PPU mode! (" + mode + ")", LOGLEVEL::WARN);
+    }
+
+    if(!CurrentOAMTransfer.completed){
+        emulator->getDebugger()->emuLog("Tried triggering an OAM transfer while a transfer was already in progress", LOGLEVEL::WARN);
+        return;
+    }
+    if(source % 0x100 != 0){
+        emulator->getDebugger()->emuLog("Tried triggering an OAM transfer from an invalid address (" + Utils::decHex(source) + ")", LOGLEVEL::WARN);
+        return;
+    }
+
+    //  TODO: Log transfers for cool debug features
+    CurrentOAMTransfer.completed = false;
+    CurrentOAMTransfer.source = source;
+    CurrentOAMTransfer.nextByte = 0;
+}
+
+/*
+ *  Updates memory transfers, currently only OAM
+ */
+void RAM::updateTransfers(unsigned int cycles) {
+    if(CurrentOAMTransfer.completed) return;
+    //  Increment internal cycle counter
+    CurrentOAMTransfer.clockCounter += cycles;
+    while(CurrentOAMTransfer.nextByte < OAM_TRANSFER_SIZE && CurrentOAMTransfer.clockCounter >= OAM_TRANSFER_CYCLES_PER_BYTE){
+        memory[OAM_TRANSFER_TARGET + CurrentOAMTransfer.nextByte] = memory[CurrentOAMTransfer.source + CurrentOAMTransfer.nextByte];
+        CurrentOAMTransfer.nextByte++;
+        CurrentOAMTransfer.clockCounter -= OAM_TRANSFER_CYCLES_PER_BYTE;
+    }
+    //  OAM completed
+    if(CurrentOAMTransfer.nextByte == OAM_TRANSFER_SIZE){
+        CurrentOAMTransfer.completed = true;
+    }
 }

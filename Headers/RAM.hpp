@@ -64,6 +64,15 @@ class RAM{
             {HUC1_RAM_BAT , "HUC1_RAM_BAT"}
     };
 
+    struct{
+        uint16_t source;
+        unsigned int nextByte, clockCounter;
+        bool completed = true;
+    } CurrentOAMTransfer;
+
+    void beginTransferOAM(uint16_t source);
+
+
 public:
     void bind(Emulator* newEmulator);
     uint8_t read(uint16_t address);
@@ -79,6 +88,8 @@ public:
     void mountBanksRAM();
     void unmountRAM();
     void loadROM(std::string path);
+
+    void updateTransfers(size_t cycles);
 
     uint8_t* getBaseMemoryPointer();
     uint8_t* getFlashBasePointer();
