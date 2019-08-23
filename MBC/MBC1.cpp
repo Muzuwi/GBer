@@ -141,3 +141,7 @@ void MBC1::mountBanks() {
     memory->insert(memory->getROMBasePointer(), 0x0, 0x4000, 0, memory->getSizeROM());
     memory->insert(memory->getROMBasePointer(), 0x4000, 0x4000, 0x4000, memory->getSizeROM());
 }
+
+MBC1::MBC1(MBCFlags config) {
+    this->flags = config;
+}

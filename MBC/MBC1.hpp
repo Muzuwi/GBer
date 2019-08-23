@@ -14,6 +14,7 @@ class MBC1 : public virtual BasicMBC{
     uint8_t bankNumberUpper2 = 0, bankNumberLower5 = 0, mountedBankNumber = 0;
 
 public:
+    MBC1(MBCFlags config);
 
     bool handleWriteMBC(uint16_t address, uint8_t byte) override;
 

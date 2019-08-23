@@ -100,3 +100,7 @@ void MBC3::mountBanks() {
     debugger->emuLog("Mounting ROM banks 0 and 1 completed");
 
 }
+
+MBC3::MBC3(MBCFlags config) {
+    this->flags = config;
+}

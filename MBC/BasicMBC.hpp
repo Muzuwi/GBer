@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <Headers/Structures.hpp>
 
 class RAM;
 class Debugger;
@@ -14,8 +15,10 @@ protected:
 
     //  RAM bank/rom bank count
     size_t extRamBankCount = 0, romBankCount = 0;
-    // RAM/ROM physical size
+    //  RAM/ROM physical size
     size_t flashSize = 0, romSize = 0;
+    //  Feature flags
+    MBCFlags flags = 0;
 
 public:
     void bindMBC(RAM* newMem, Debugger* newDebug);
@@ -31,6 +34,8 @@ public:
     void setROMBankCount(size_t count);
 
     size_t getROMBankCount();
+
+    bool supports(MBCFlags flags);
 
     virtual bool handleWriteMBC(uint16_t address, uint8_t byte) { return false; };
 

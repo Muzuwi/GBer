@@ -14,6 +14,7 @@ class MBC3 : public virtual BasicMBC {
 
 
 public:
+    MBC3(MBCFlags config);
 
     bool handleWriteMBC(uint16_t address, uint8_t byte) override;
 

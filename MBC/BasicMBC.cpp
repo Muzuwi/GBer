@@ -31,3 +31,7 @@ void BasicMBC::setFlashSize(size_t size) {
 size_t BasicMBC::getFlashSize() {
     return flashSize;
 }
+
+bool BasicMBC::supports(MBCFlags flags) {
+    return (this->flags & flags);
+}
