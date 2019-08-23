@@ -65,6 +65,8 @@ class Display{
     void drawOverlayContents();
     void drawWindowGameOnly();
 
+    void handleKeyEvents(SDL_Event* event);
+
     //  Helper flags for ImGui windows
     struct{
         bool showDemoWindow = false;

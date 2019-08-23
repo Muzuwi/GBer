@@ -131,3 +131,7 @@ bool Config::setNewFilename(std::string filename) {
 void Config::toggleDebug() {
     debugMode = !debugMode;
 }
+
+SDL_Keycode Config::getKeyBinding(GBerKeyBinding key) {
+    return keybindings[key];
+}

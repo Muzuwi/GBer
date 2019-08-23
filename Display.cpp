@@ -584,19 +584,125 @@ Keypad* Display::getJoypad(){
 }
 
 /*
- *  Handles a given SDL event
+ *  Handles SDL key down and key up events
  */
-void Display::handleEvent(SDL_Event* event) {
-    ImGui::SetCurrentContext(overlayContext);
-    ImGui_ImplSDL2_ProcessEvent(event);
+void Display::handleKeyEvents(SDL_Event* event) {
     auto io = ImGui::GetIO();
+    auto config = emulator->getConfig();
+    //  If ImGui takes over the keyboard, ignore events
+    if(io.WantCaptureKeyboard) return;
+
     //  Better input behavior
     static bool leftHold = false,
                 upHold = false,
                 downHold = false,
                 rightHold = false;
 
-    auto config = emulator->getConfig();
+    //  Key up events
+    if(event->type == SDL_KEYUP){
+        if(event->key.keysym.sym == config->getKeyBinding(KeyA)) joypadState.aP = false;
+        if(event->key.keysym.sym == config->getKeyBinding(KeyB)) joypadState.bP = false;
+        if(event->key.keysym.sym == config->getKeyBinding(KeySel)) joypadState.selP = false;
+        if(event->key.keysym.sym == config->getKeyBinding(KeyStart)) joypadState.startP = false;
+        if(event->key.keysym.sym == config->getKeyBinding(KeyUp)) {
+            joypadState.uP = false;
+            upHold = false;
+            //  Restore previous input
+            if(downHold){
+                joypadState.dP = true;
+            }
+        }
+        if(event->key.keysym.sym == config->getKeyBinding(KeyDown)) {
+            joypadState.dP = false;
+            downHold = false;
+            //  Restore previous input
+            if(upHold){
+                joypadState.uP = true;
+            }
+        }
+        if(event->key.keysym.sym == config->getKeyBinding(KeyLeft)) {
+            joypadState.lP = false;
+            leftHold = false;
+            //  Restore previous input
+            if(rightHold){
+                joypadState.rP = true;
+            }
+        }
+        if(event->key.keysym.sym == config->getKeyBinding(KeyRight)) {
+            joypadState.rP = false;
+            rightHold = false;
+            //  Restore previous input
+            if(leftHold){
+                joypadState.lP= true;
+            }
+        }
+
+    } else if(event-> type == SDL_KEYDOWN){ //  Key down events
+        //  A button
+        if(event->key.keysym.sym == config->getKeyBinding(KeyA)){
+            joypadState.aP = true;
+            emulator->getCPU()->wakeFromStop();
+        }
+        //  B button
+        if(event->key.keysym.sym == config->getKeyBinding(KeyB)){
+            joypadState.bP = true;
+            emulator->getCPU()->wakeFromStop();
+        }
+        //  Select button
+        if(event->key.keysym.sym == config->getKeyBinding(KeySel)){
+            joypadState.selP = true;
+            emulator->getCPU()->wakeFromStop();
+        }
+        //  Start button
+        if(event->key.keysym.sym == config->getKeyBinding(KeyStart)){
+            joypadState.startP = true;
+            emulator->getCPU()->wakeFromStop();
+        }
+        //  Up arrow
+        if(event->key.keysym.sym == config->getKeyBinding(KeyUp)){
+            upHold = true;
+            joypadState.uP = true;
+            if(joypadState.dP) joypadState.dP = false;
+            emulator->getCPU()->wakeFromStop();
+        }
+        //  Down arrow
+        if(event->key.keysym.sym == config->getKeyBinding(KeyDown)){
+            downHold = true;
+            joypadState.dP = true;
+            if(joypadState.uP) joypadState.uP = false;
+            emulator->getCPU()->wakeFromStop();
+        }
+        //  Left arrow
+        if(event->key.keysym.sym == config->getKeyBinding(KeyLeft)){
+            leftHold = true;
+            joypadState.lP = true;
+            if(joypadState.rP) joypadState.rP = false;
+            emulator->getCPU()->wakeFromStop();
+        }
+        //  Right arrow
+        if(event->key.keysym.sym == config->getKeyBinding(KeyRight)){
+            rightHold = true;
+            joypadState.rP = true;
+            if(joypadState.lP) joypadState.lP = false;
+            emulator->getCPU()->wakeFromStop();
+        }
+        //  Overlay hotkey
+        //  TODO: Add key binding for overlay
+        if(event->key.keysym.sym == SDLK_TAB){
+            if(!emulator->getConfig()->isDebug() && event->key.keysym.mod & KMOD_LSHIFT ){
+                overlayOpen = !overlayOpen;
+            }
+        }
+    }
+}
+
+
+/*
+ *  Handles a given SDL event
+ */
+void Display::handleEvent(SDL_Event* event) {
+    ImGui::SetCurrentContext(overlayContext);
+    ImGui_ImplSDL2_ProcessEvent(event);
 
     switch(event->type) {
         case SDL_WINDOWEVENT_CLOSE:
@@ -604,118 +710,8 @@ void Display::handleEvent(SDL_Event* event) {
             emulator->halt();
             break;
         case SDL_KEYUP:
-            if(io.WantCaptureKeyboard) break;
-            switch(event->key.keysym.sym){
-                case SDLK_z: {
-                    joypadState.aP = false; break;
-                }
-                case SDLK_x: {
-                    joypadState.bP = false; break;
-                }
-                case SDLK_a: {
-                    joypadState.selP = false; break;
-                }
-                case SDLK_s: {
-                    joypadState.startP = false; break;
-                }
-                case SDLK_UP: {
-                    joypadState.uP = false;
-                    upHold = false;
-                    //  Restore previous input
-                    if(downHold){
-                        joypadState.dP = true;
-                    }
-                    break;
-                }
-                case SDLK_DOWN: {
-                    joypadState.dP = false;
-                    downHold = false;
-                    //  Restore previous input
-                    if(upHold){
-                        joypadState.uP = true;
-                    }
-                    break;
-                }
-                case SDLK_LEFT: {
-                    joypadState.lP = false;
-                    leftHold = false;
-                    //  Restore previous input
-                    if(rightHold){
-                        joypadState.rP = true;
-                    }
-                    break;
-                }
-                case SDLK_RIGHT: {
-                    joypadState.rP = false;
-                    rightHold = false;
-                    //  Restore previous input
-                    if(leftHold){
-                        joypadState.lP= true;
-                    }
-                    break;
-                }
-                default: break;
-            }
-            break;
         case SDL_KEYDOWN:
-            if(io.WantCaptureKeyboard) break;
-            switch(event->key.keysym.sym){
-                case SDLK_z: {
-                    joypadState.aP = true;
-                    emulator->getCPU()->wakeFromStop();
-                    break;
-                }
-                case SDLK_x: {
-                    joypadState.bP = true;
-                    emulator->getCPU()->wakeFromStop();
-                    break;
-                }
-                case SDLK_a: {
-                    joypadState.selP = true;
-                    emulator->getCPU()->wakeFromStop();
-                    break;
-                }
-                case SDLK_s: {
-                    joypadState.startP = true;
-                    emulator->getCPU()->wakeFromStop();
-                    break;
-                }
-                case SDLK_UP: {
-                    upHold = true;
-                    joypadState.uP = true;
-                    if(joypadState.dP) joypadState.dP = false;
-                    emulator->getCPU()->wakeFromStop();
-                    break;
-                }
-                case SDLK_DOWN: {
-                    downHold = true;
-                    joypadState.dP = true;
-                    if(joypadState.uP) joypadState.uP = false;
-                    emulator->getCPU()->wakeFromStop();
-                    break;
-                }
-                case SDLK_LEFT: {
-                    leftHold = true;
-                    joypadState.lP = true;
-                    if(joypadState.rP) joypadState.rP = false;
-                    emulator->getCPU()->wakeFromStop();
-                    break;
-                }
-                case SDLK_RIGHT: {
-                    rightHold = true;
-                    joypadState.rP = true;
-                    if(joypadState.lP) joypadState.lP = false;
-                    emulator->getCPU()->wakeFromStop();
-                    break;
-                }
-                case SDLK_TAB:{
-                    if(!emulator->getConfig()->isDebug() && event->key.keysym.mod & KMOD_LSHIFT ){
-                        overlayOpen = !overlayOpen;
-                    }
-                    break;
-                }
-                default: break;
-            }
+            handleKeyEvents(event);
             break;
         case SDL_DROPFILE:
             char* dropped;
