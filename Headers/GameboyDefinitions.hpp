@@ -87,6 +87,65 @@ enum BankingMode{
     RTC_BANK
 };
 
+/*
+ *  APU register structures
+ */
+
+enum SweepTime{
+    Sweep_Off = 0,
+    Sweep_1_128th,
+    Sweep_2_128th,
+    Sweep_3_128th,
+    Sweep_4_128th,
+    Sweep_5_128th,
+    Sweep_6_128th,
+    Sweep_7_128th = 7,
+};
+
+enum SweepMode{
+    Sweep_Addition = 0,
+    Sweep_Subtraction = 1
+};
+
+enum Duty{
+    Duty_12_5 = 0,
+    Duty_25,
+    Duty_50,
+    Duty_75 = 3
+};
+
+enum EnvelopeMode{
+    Envelope_Attenuate = 0,
+    Envelope_Amplify = 1
+};
+
+struct SoundMode1SweepRegister{
+    SweepTime sweepTime;
+    SweepMode sweepMode;
+    uint8_t sweepCount : 3;
+};
+
+struct SoundMode1DutyRegister{
+    Duty wavePatternDuty;
+    uint8_t soundLength : 6;
+};
+
+struct SoundMode1EnvelopeRegister{
+    uint8_t initialVolume : 4;
+    EnvelopeMode envelopeMode;
+    uint8_t envelopeSweepCount : 3;
+};
+
+struct SoundMode1Register{
+    SoundMode1SweepRegister sweepRegister;
+    SoundMode1DutyRegister dutyRegister;
+    SoundMode1EnvelopeRegister envelopeRegister;
+    uint16_t frequency : 11;
+    bool initial;
+    bool repeat;
+};
+
+
 
 //  IO Registers
 

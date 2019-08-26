@@ -221,3 +221,7 @@ void Emulator::triggerBreak(std::string message) {
     cpu.setContinueExec(false);
     display.createDebugTooltip(message, 180);
 }
+
+APU *Emulator::getAPU() {
+    return &apu;
+}

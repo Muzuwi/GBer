@@ -178,13 +178,43 @@ void DebugAPU::updateWindowContents(Emulator *emulator) {
     auto ram = emulator->getMemory();
 
     ImGui::Text("Channel 1");
+    auto reg = emulator->getAPU()->getSM1();
+    ImGui::Text("Frequency: %i", reg->frequency);
+    switch(reg->dutyRegister.wavePatternDuty){
+        case Duty::Duty_12_5:{
+            const float samples[] {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+            ImGui::PlotHistogram("Duty cycle: 12.5%", samples, IM_ARRAYSIZE(samples), 0, nullptr, 0, 1, ImVec2(100, 20));
+            break;
+        }
+        case Duty::Duty_25:{
+            const float samples[] {1.0f, 0.0f, 0.0f, 0.0f};
+            ImGui::PlotHistogram("Duty cycle: 25%", samples, IM_ARRAYSIZE(samples), 0, nullptr, 0, 1, ImVec2(100, 20));
+            break;
+        }
+        case Duty::Duty_50:{
+            const float samples[] {1.0f, 1.0f, 0.0f, 0.0f};
+            ImGui::PlotHistogram("Duty cycle: 50%", samples, IM_ARRAYSIZE(samples), 0, nullptr, 0, 1, ImVec2(100, 20));
+            break;
+        }
+        case Duty::Duty_75:{
+            const float samples[] {1.0f, 1.0f, 1.0f, 0.0f};
+            ImGui::PlotHistogram("Duty cycle: 75%", samples, IM_ARRAYSIZE(samples), 0, nullptr, 0, 1, ImVec2(100, 20));
+            break;
+        }
+    }
+    ImGui::Checkbox("Repeat", &reg->repeat);
 
+
+    ImGui::Separator();
     ImGui::Text("Channel 2");
 
+    ImGui::Separator();
     ImGui::Text("Channel 3");
 
+    ImGui::Separator();
     ImGui::Text("Channel 4");
 
+    ImGui::Separator();
     ImGui::Text("Control Channel");
     bool SO1[4], SO2[4];
     for(unsigned int i = 0; i < 4; i++ ) SO1[i] = ram->peek(NR51) & (1 << i);
@@ -467,7 +497,7 @@ void DebugBreakpoints::updateWindowContents(Emulator *emulator) {
     static uint8_t value = 0;
 
     ImGui::PushItemWidth(100);
-    ImGui::InputText("Address", buffer, IM_ARRAYSIZE(buffer));
+    ImGui::InputText("Address/OP", buffer, IM_ARRAYSIZE(buffer));
     ImGui::SameLine();
     ImGui::Checkbox("Val", &showVal);
     if(showVal){
@@ -483,6 +513,27 @@ void DebugBreakpoints::updateWindowContents(Emulator *emulator) {
     ImGui::Checkbox("X##execute", &execute);
     ImGui::SameLine();
     ImGui::Checkbox("Prefix CB", &prefixCB);
+
+    /*
+     *          if(std::string("").compare(buffer)){
+                    int casted = strtol(buffer, NULL, 16);
+                    if(!(casted < 0 || casted > 0xFFFF)){
+                        addAddressBreakpoint(casted);
+                    }
+                }
+     */
+
+    ImGui::SameLine();
+    if(ImGui::Button("Add") && std::string("").compare(buffer)){
+        unsigned int castedVal = strtol(buffer, nullptr, 16);
+        MemoryBreakpoint breakpoint(castedVal, read, write, showVal, value);
+        if(read || write){
+            emulator->getDebugger()->addMemoryBreakpoint(breakpoint);
+        }
+        if(execute){
+            emulator->getDebugger()->addOpBreakpoint(castedVal);
+        }
+    }
 
 }
 

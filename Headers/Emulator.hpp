@@ -50,6 +50,8 @@ public:
 
     LR35902 *getCPU();
 
+    APU *getAPU();
+
     void halt();
 
     void triggerBreak(std::string message);

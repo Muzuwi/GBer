@@ -30,9 +30,11 @@ add_executable(GBer
         Display.cpp
         PPU.cpp
         Debugger.cpp
+        Debugger/DebuggerModules.cpp
+        APU.cpp
         Emulator.cpp
         Main.cpp
-        APU.cpp Debugger/DebuggerModules.cpp Debugger/DebuggerModules.hpp)
+        )
 
 
 
