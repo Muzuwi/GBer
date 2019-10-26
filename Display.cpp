@@ -219,6 +219,7 @@ void Display::drawMenuBar() {
 
     if(ImGui::BeginMenu("Configuration")){
         if(ImGui::MenuItem("Graphics")) WindowFlags.showGraphicsConfig = true;
+        if(ImGui::MenuItem("Input")) WindowFlags.showInputConfig = true;
         ImGui::EndMenu();
     }
 
@@ -247,6 +248,11 @@ void Display::drawMenuBar() {
 
     if(ImGui::Button(emulator->getConfig()->isDebug() ? "Leave Debug mode" : "Enter Debug mode")){
         emulator->triggerToggleDebugger();
+    }
+
+    if(Tooltip.frameCount > 0){
+        ImGui::TextColored(ImVec4(1.0, 0.0, 1.0, 1.0), "%s", Tooltip.text.c_str());
+        Tooltip.frameCount--;
     }
 
     ImGui::EndMainMenuBar();
@@ -324,6 +330,81 @@ void Display::drawCommon() {
 
         ImGui::End();
     }
+    if(WindowFlags.showInputConfig){
+        ImGui::Begin("Input", &WindowFlags.showInputConfig);
+
+        ImGui::BeginColumns("InputCols", 2);
+
+        ImGui::Text("A");
+        ImGui::SameLine();
+        if(ImGui::Button("A")){
+            WindowFlags.requestKeybindInput = true;
+            KeyEntry.binding = GBerKeyBinding::KeyA;
+        }
+
+        ImGui::Text("B");
+        ImGui::SameLine();
+        if(ImGui::Button("B")){
+            WindowFlags.requestKeybindInput = true;
+            KeyEntry.binding = GBerKeyBinding::KeyB;
+        }
+
+        ImGui::Text("Sel");
+        ImGui::SameLine();
+        if(ImGui::Button("Sel")){
+            WindowFlags.requestKeybindInput = true;
+            KeyEntry.binding = GBerKeyBinding::KeySel;
+        }
+
+        ImGui::Text("Start");
+        ImGui::SameLine();
+        if(ImGui::Button("Start")){
+            WindowFlags.requestKeybindInput = true;
+            KeyEntry.binding = GBerKeyBinding::KeyStart;
+        }
+
+        ImGui::NextColumn();
+
+        ImGui::Text("Up");
+        ImGui::SameLine();
+        if(ImGui::Button("Up")){
+            WindowFlags.requestKeybindInput = true;
+            KeyEntry.binding = GBerKeyBinding::KeyUp;
+        }
+
+        ImGui::Text("Down");
+        ImGui::SameLine();
+        if(ImGui::Button("Down")){
+            WindowFlags.requestKeybindInput = true;
+            KeyEntry.binding = GBerKeyBinding::KeyDown;
+        }
+
+        ImGui::Text("Left");
+        ImGui::SameLine();
+        if(ImGui::Button("Left")){
+            WindowFlags.requestKeybindInput = true;
+            KeyEntry.binding = GBerKeyBinding::KeyLeft;
+        }
+
+        ImGui::Text("Right");
+        ImGui::SameLine();
+        if(ImGui::Button("Right")){
+            WindowFlags.requestKeybindInput = true;
+            KeyEntry.binding = GBerKeyBinding::KeyRight;
+        }
+
+        ImGui::EndColumns();
+
+        if(WindowFlags.requestKeybindInput){
+            ImGui::OpenPopup("Enter a key");
+            ImGui::BeginPopup("Enter a key");
+            ImGui::Text("Enter a key for binding %i", KeyEntry.binding);
+            ImGui::EndPopup();
+        }
+
+        ImGui::End();
+    }
+
 }
 
 /*
@@ -524,6 +605,7 @@ void Display::updateWindow(){
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
             io.ConfigDockingWithShift = true;
 
+            SDL_SetWindowResizable(gberWindow, SDL_TRUE);
             SDL_MaximizeWindow(gberWindow);
         } else {
             //  Turn off docking
@@ -531,6 +613,7 @@ void Display::updateWindow(){
             io.ConfigFlags &= ~ImGuiConfigFlags_DockingEnable;
             io.ConfigDockingWithShift = false;
 
+            SDL_SetWindowResizable(gberWindow, SDL_FALSE);
             SDL_RestoreWindow(gberWindow);
         }
         WindowFlags.requestWindowSizeChange = false;
@@ -592,6 +675,13 @@ void Display::handleKeyEvents(SDL_Event* event) {
     //  If ImGui takes over the keyboard, ignore events
     if(io.WantCaptureKeyboard) return;
 
+    //  If we want to read a keybinding, ignore normal event handling and set the key that was pressed
+    if(WindowFlags.requestKeybindInput){
+        WindowFlags.requestKeybindInput = false;
+        config->setKeyBinding(KeyEntry.binding, event->key.keysym.sym);
+        return;
+    }
+
     //  Better input behavior
     static bool leftHold = false,
                 upHold = false,
@@ -638,25 +728,30 @@ void Display::handleKeyEvents(SDL_Event* event) {
         }
 
     } else if(event-> type == SDL_KEYDOWN){ //  Key down events
+        auto ram = emulator->getMemory()->getBaseMemoryPointer();
         //  A button
         if(event->key.keysym.sym == config->getKeyBinding(KeyA)){
             joypadState.aP = true;
             emulator->getCPU()->wakeFromStop();
+            ram[IF] |= IF_HILO;
         }
         //  B button
         if(event->key.keysym.sym == config->getKeyBinding(KeyB)){
             joypadState.bP = true;
             emulator->getCPU()->wakeFromStop();
+            ram[IF] |= IF_HILO;
         }
         //  Select button
         if(event->key.keysym.sym == config->getKeyBinding(KeySel)){
             joypadState.selP = true;
             emulator->getCPU()->wakeFromStop();
+            ram[IF] |= IF_HILO;
         }
         //  Start button
         if(event->key.keysym.sym == config->getKeyBinding(KeyStart)){
             joypadState.startP = true;
             emulator->getCPU()->wakeFromStop();
+            ram[IF] |= IF_HILO;
         }
         //  Up arrow
         if(event->key.keysym.sym == config->getKeyBinding(KeyUp)){
@@ -664,6 +759,7 @@ void Display::handleKeyEvents(SDL_Event* event) {
             joypadState.uP = true;
             if(joypadState.dP) joypadState.dP = false;
             emulator->getCPU()->wakeFromStop();
+            ram[IF] |= IF_HILO;
         }
         //  Down arrow
         if(event->key.keysym.sym == config->getKeyBinding(KeyDown)){
@@ -671,6 +767,7 @@ void Display::handleKeyEvents(SDL_Event* event) {
             joypadState.dP = true;
             if(joypadState.uP) joypadState.uP = false;
             emulator->getCPU()->wakeFromStop();
+            ram[IF] |= IF_HILO;
         }
         //  Left arrow
         if(event->key.keysym.sym == config->getKeyBinding(KeyLeft)){
@@ -678,6 +775,7 @@ void Display::handleKeyEvents(SDL_Event* event) {
             joypadState.lP = true;
             if(joypadState.rP) joypadState.rP = false;
             emulator->getCPU()->wakeFromStop();
+            ram[IF] |= IF_HILO;
         }
         //  Right arrow
         if(event->key.keysym.sym == config->getKeyBinding(KeyRight)){
@@ -685,12 +783,20 @@ void Display::handleKeyEvents(SDL_Event* event) {
             joypadState.rP = true;
             if(joypadState.lP) joypadState.lP = false;
             emulator->getCPU()->wakeFromStop();
+            ram[IF] |= IF_HILO;
         }
         //  Overlay hotkey
         //  TODO: Add key binding for overlay
         if(event->key.keysym.sym == SDLK_TAB){
             if(!emulator->getConfig()->isDebug() && event->key.keysym.mod & KMOD_LSHIFT ){
                 overlayOpen = !overlayOpen;
+            }
+        }
+
+        //  Step key
+        if(event->key.keysym.sym == SDLK_F3){
+            if(emulator->getConfig()->isDebug()){
+                emulator->getCPU()->setStep(true);
             }
         }
     }
@@ -716,7 +822,6 @@ void Display::handleEvent(SDL_Event* event) {
         case SDL_DROPFILE:
             char* dropped;
             dropped = event->drop.file;
-            //std::cout << dropped << " file\n";
             emulator->requestChangeROM(dropped);
             SDL_free(dropped);
             break;
@@ -738,7 +843,7 @@ void Display::eventDebugStatusSwitched() {
  *  Creates a debug tooltip in the main menu bar
  */
 void Display::createDebugTooltip(const std::string text, unsigned int frames) {
-    if(!this->Tooltip.text.empty()){
+    if(this->Tooltip.frameCount == 0){
         this->Tooltip.frameCount = frames;
         this->Tooltip.text = text;
     }

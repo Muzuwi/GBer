@@ -9,6 +9,7 @@
 #include "imgui/imgui_memory_editor.h"
 #include "Headers/GameboyDefinitions.hpp"
 #include "Debugger/DebuggerModules.hpp"
+#include "Structures.hpp"
 
 class Emulator;
 
@@ -74,7 +75,8 @@ class Display{
         bool reloadROM = false;
         bool resetLayout = false;
         bool requestWindowSizeChange = false;
-
+        bool showInputConfig = false;
+        bool requestKeybindInput = false;
     } WindowFlags;
 
     //  Debugger mode windows
@@ -99,6 +101,12 @@ class Display{
         std::string text;
         unsigned int frameCount;
     } Tooltip;
+
+    struct{
+        GBerKeyBinding binding;
+        SDL_Keycode value;
+    } KeyEntry;
+
 
 public:
     void bind(Emulator* newEmulator);
