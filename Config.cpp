@@ -135,3 +135,7 @@ void Config::toggleDebug() {
 SDL_Keycode Config::getKeyBinding(GBerKeyBinding key) {
     return keybindings[key];
 }
+
+void Config::setKeyBinding(GBerKeyBinding bind, SDL_Keycode in_key) {
+    keybindings[bind] = in_key;
+}

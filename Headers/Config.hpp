@@ -36,4 +36,5 @@ public:
     std::string getSavename();
     bool setNewFilename(std::string filename);
     SDL_Keycode getKeyBinding(GBerKeyBinding key);
+    void setKeyBinding(GBerKeyBinding bind, SDL_Keycode in_key);
 };
