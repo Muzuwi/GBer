@@ -11,7 +11,6 @@ add_definitions(-pedantic)
 include_directories(${CMAKE_SOURCE_DIR}/)
 
 add_executable(GBer
-        imgui/gl3w.c
         imgui/imgui.cpp
         imgui/imgui_demo.cpp
         imgui/imgui_draw.cpp
@@ -43,6 +42,7 @@ if(WIN32)
     target_link_libraries(GBer -lsdl2main)
     target_link_libraries(GBer -lsdl2)
     target_link_libraries(GBer -lopengl32)
+    target_link_libraries(GBer -lgl3w)
 endif(WIN32)
 
 if(UNIX)
@@ -50,4 +50,5 @@ if(UNIX)
     target_link_libraries(GBer -ldl)
     target_link_libraries(GBer -lSDL2main)
     target_link_libraries(GBer -lSDL2)
+    target_link_libraries(GBer -lgl3w)
 endif(UNIX)
