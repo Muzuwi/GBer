@@ -2,7 +2,6 @@
 #include "Headers/Display.hpp"
 #include "Headers/Emulator.hpp"
 
-
 /*
  *  Bind a new emulator object to this class
  */
@@ -331,34 +330,40 @@ void Display::drawCommon() {
         ImGui::End();
     }
     if(WindowFlags.showInputConfig){
+        auto config = emulator->getConfig();
+
         ImGui::Begin("Input", &WindowFlags.showInputConfig);
 
         ImGui::BeginColumns("InputCols", 2);
 
         ImGui::Text("A");
         ImGui::SameLine();
-        if(ImGui::Button("A")){
+        auto label = SDL_GetKeyName(config->getKeyBinding(GBerKeyBinding::KeyA));
+        if(ImGui::Button(label)) {
             WindowFlags.requestKeybindInput = true;
             KeyEntry.binding = GBerKeyBinding::KeyA;
         }
 
         ImGui::Text("B");
         ImGui::SameLine();
-        if(ImGui::Button("B")){
+        label = SDL_GetKeyName(config->getKeyBinding(GBerKeyBinding::KeyB));
+        if(ImGui::Button(label)) {
             WindowFlags.requestKeybindInput = true;
             KeyEntry.binding = GBerKeyBinding::KeyB;
         }
 
         ImGui::Text("Sel");
         ImGui::SameLine();
-        if(ImGui::Button("Sel")){
+        label = SDL_GetKeyName(config->getKeyBinding(GBerKeyBinding::KeySel));
+        if(ImGui::Button(label)) {
             WindowFlags.requestKeybindInput = true;
             KeyEntry.binding = GBerKeyBinding::KeySel;
         }
 
         ImGui::Text("Start");
         ImGui::SameLine();
-        if(ImGui::Button("Start")){
+        label = SDL_GetKeyName(config->getKeyBinding(GBerKeyBinding::KeyStart));
+        if(ImGui::Button(label)) {
             WindowFlags.requestKeybindInput = true;
             KeyEntry.binding = GBerKeyBinding::KeyStart;
         }
@@ -367,28 +372,32 @@ void Display::drawCommon() {
 
         ImGui::Text("Up");
         ImGui::SameLine();
-        if(ImGui::Button("Up")){
+        label = SDL_GetKeyName(config->getKeyBinding(GBerKeyBinding::KeyUp));
+        if(ImGui::Button(label)) {
             WindowFlags.requestKeybindInput = true;
             KeyEntry.binding = GBerKeyBinding::KeyUp;
         }
 
         ImGui::Text("Down");
         ImGui::SameLine();
-        if(ImGui::Button("Down")){
+        label = SDL_GetKeyName(config->getKeyBinding(GBerKeyBinding::KeyDown));
+        if(ImGui::Button(label)) {
             WindowFlags.requestKeybindInput = true;
             KeyEntry.binding = GBerKeyBinding::KeyDown;
         }
 
         ImGui::Text("Left");
         ImGui::SameLine();
-        if(ImGui::Button("Left")){
+        label = SDL_GetKeyName(config->getKeyBinding(GBerKeyBinding::KeyLeft));
+        if(ImGui::Button(label)) {
             WindowFlags.requestKeybindInput = true;
             KeyEntry.binding = GBerKeyBinding::KeyLeft;
         }
 
         ImGui::Text("Right");
         ImGui::SameLine();
-        if(ImGui::Button("Right")){
+        label = SDL_GetKeyName(config->getKeyBinding(GBerKeyBinding::KeyRight));
+        if(ImGui::Button(label)) {
             WindowFlags.requestKeybindInput = true;
             KeyEntry.binding = GBerKeyBinding::KeyRight;
         }
