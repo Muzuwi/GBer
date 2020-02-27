@@ -37,9 +37,9 @@ void Debugger::handleAddressBreakpoint(uint16_t address) {
     }
 }
 
-void Debugger::handleInstructionBreakpoint(uint8_t op) {
+void Debugger::handleInstructionBreakpoint(InstructionBreakpoint op) {
     if(this->checkInstructionBreakpoint(op)){
-        emulator->triggerBreak("Instruction breakpoint $" + Utils::decHex(op));
+        emulator->triggerBreak("Instruction breakpoint $" + Utils::decHex(op.op,2));
     }
 }
 
@@ -53,8 +53,8 @@ void Debugger::addAddressBreakpoint(uint16_t address) {
     addressBreakpoints.push_back(address);
 }
 
-void Debugger::addOpBreakpoint(uint8_t op) {
-    instructionBreakpoints.push_back(op);
+void Debugger::addOpBreakpoint(uint8_t op, bool isCB) {
+    instructionBreakpoints.push_back(InstructionBreakpoint(op, isCB));
 }
 
 void Debugger::addMemoryBreakpoint(MemoryBreakpoint breakpoint) {
@@ -68,9 +68,11 @@ bool Debugger::checkAddressBreakpoint(uint16_t address) {
     return false;
 }
 
-bool Debugger::checkInstructionBreakpoint(uint8_t op) {
-    for(uint8_t opcode : instructionBreakpoints){
-        if(op == opcode) return true;
+bool Debugger::checkInstructionBreakpoint(InstructionBreakpoint op) {
+    for(InstructionBreakpoint breakpoint : instructionBreakpoints){
+        if(op.op == breakpoint.op){
+            if(op.cb == breakpoint.cb) return true;
+        }
     }
     return false;
 }

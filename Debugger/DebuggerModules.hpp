@@ -2,15 +2,11 @@
 #include <string>
 #include <GL/gl3w.h>
 #include <SDL2/SDL.h>
+#include "Debugger/DebuggerWindow.hpp"
 
 /*
  *  This file contains the declarations for all of the debugger widgets
  */
-
-
-class Emulator;
-
-#include "Debugger/DebuggerWindow.hpp"
 
 /*
  *  Register window

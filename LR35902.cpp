@@ -841,8 +841,7 @@ inline void LR35902::decodeInstruction(uint8_t prefix, uint8_t op, uint8_t immed
             default: {
                 emulator->getDebugger()->emuLog("UNKNOWN OPCODE at " + Utils::decHex(Registers.PC) + ": " +  Utils::decHex(prefix, 2), LOGLEVEL::ERR);
                 if(emulator->getConfig()->isDebug()){
-                    this->continueExec = false;
-                    this->step = false;
+                    emulator->triggerBreak("UNKNOWN OPCODE at " + Utils::decHex(Registers.PC) + ": " +  Utils::decHex(prefix, 2));
                 } else {
                     emulator->halt();
                 }
@@ -859,8 +858,7 @@ inline void LR35902::decodeInstruction(uint8_t prefix, uint8_t op, uint8_t immed
             default: {
                 emulator->getDebugger()->emuLog("UNKNOWN CB OPCODE at " + Utils::decHex(Registers.PC) + ": " +  Utils::decHex(op), LOGLEVEL::ERR);
                 if(emulator->getConfig()->isDebug()){
-                    this->continueExec = false;
-                    this->step = false;
+                    emulator->triggerBreak("UNKNOWN CB OPCODE at " + Utils::decHex(Registers.PC) + ": " +  Utils::decHex(op));
                 } else {
                     emulator->halt();
                 }
@@ -922,7 +920,7 @@ int LR35902::cycle(){
     //  Turn off unused bits of register F
     Registers.F = Registers.F & 0xF0;
 
-    //std::cout << "PC: " + Utils::decHex(Registers.PC) + "  AF:" + Utils::decHex(Registers.A * 0x100 + Registers.F) + "  BC:" + Utils::decHex(readBC()) + "  DE:" + Utils::decHex(readDE()) + "  HL:" + Utils::decHex(readHL()) + "  SP:" + Utils::decHex(Registers.SP) + + "[" + Utils::decHex(emulator->getMemory()->peek(Registers.SP+1), 2) + Utils::decHex(emulator->getMemory()->peek(Registers.SP), 2) + Utils::decHex(emulator->getMemory()->peek(Registers.SP-1), 2) + "]\n";
+    std::cout << "PC: " + Utils::decHex(Registers.PC) + "  AF:" + Utils::decHex(Registers.A * 0x100 + Registers.F) + "  BC:" + Utils::decHex(readBC()) + "  DE:" + Utils::decHex(readDE()) + "  HL:" + Utils::decHex(readHL()) + "  SP:" + Utils::decHex(Registers.SP) + "\n";
 
     //  Fetch instruction
     uint8_t prefix = memory[Registers.PC],
@@ -951,9 +949,12 @@ int LR35902::cycle(){
     opcode = memory[Registers.PC+1],
     immediate = memory[Registers.PC + 2];
     if (emulator->getConfig()->isDebug()) {
-        //  TODO: Add breakpoints
         emulator->getDebugger()->handleAddressBreakpoint(Registers.PC);
-        emulator->getDebugger()->handleInstructionBreakpoint(prefix);
+        if(prefix != 0xCB){
+            emulator->getDebugger()->handleInstructionBreakpoint(InstructionBreakpoint(prefix, false));
+        } else {
+            emulator->getDebugger()->handleInstructionBreakpoint(InstructionBreakpoint(opcode, true));
+        }
         step = false;
     }
     if (continueExec) step = true;

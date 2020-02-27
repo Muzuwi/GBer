@@ -15,6 +15,15 @@ struct MemoryBreakpoint{
     uint8_t val = 0;
 };
 
+struct InstructionBreakpoint{
+    InstructionBreakpoint(uint8_t val, bool isCB){
+        op = val;
+        cb = isCB;
+    }
+    uint8_t op;
+    bool cb;
+};
+
 struct Reg{
     uint16_t SP, PC;
     uint8_t A, F, B, C, D, E, H, L;

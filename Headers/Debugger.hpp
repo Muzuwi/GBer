@@ -17,16 +17,19 @@
 class Emulator;
 
 class Debugger{
+    //  Allow access to breakpoints from debugger breakpoint window
+    friend class DebugBreakpoints;
+
     //  Emulator object
     Emulator* emulator;
 
     //  Breakpoint store
     std::vector<uint16_t> addressBreakpoints;
-    std::vector<uint8_t> instructionBreakpoints;
+    std::vector<InstructionBreakpoint> instructionBreakpoints;
     std::vector<MemoryBreakpoint> memoryBreakpoints;
 
     bool checkAddressBreakpoint(uint16_t address);
-    bool checkInstructionBreakpoint(uint8_t op);
+    bool checkInstructionBreakpoint(InstructionBreakpoint op);
     bool checkMemoryBreakpoint(MemoryBreakpoint operation);
 
 public:
@@ -35,9 +38,9 @@ public:
     void emuLog(std::string message);
 
     void handleAddressBreakpoint(uint16_t address);
-    void handleInstructionBreakpoint(uint8_t op);
+    void handleInstructionBreakpoint(InstructionBreakpoint op);
     void handleMemoryBreakpoint(MemoryBreakpoint operation);
     void addAddressBreakpoint(uint16_t address);
-    void addOpBreakpoint(uint8_t op);
+    void addOpBreakpoint(uint8_t op, bool isCB);
     void addMemoryBreakpoint(MemoryBreakpoint breakpoint);
 };

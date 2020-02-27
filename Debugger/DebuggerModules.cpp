@@ -514,15 +514,6 @@ void DebugBreakpoints::updateWindowContents(Emulator *emulator) {
     ImGui::SameLine();
     ImGui::Checkbox("Prefix CB", &prefixCB);
 
-    /*
-     *          if(std::string("").compare(buffer)){
-                    int casted = strtol(buffer, NULL, 16);
-                    if(!(casted < 0 || casted > 0xFFFF)){
-                        addAddressBreakpoint(casted);
-                    }
-                }
-     */
-
     ImGui::SameLine();
     if(ImGui::Button("Add") && std::string("").compare(buffer)){
         unsigned int castedVal = strtol(buffer, nullptr, 16);
@@ -531,10 +522,26 @@ void DebugBreakpoints::updateWindowContents(Emulator *emulator) {
             emulator->getDebugger()->addMemoryBreakpoint(breakpoint);
         }
         if(execute){
-            emulator->getDebugger()->addOpBreakpoint(castedVal);
+            emulator->getDebugger()->addOpBreakpoint(castedVal, prefixCB);
         }
     }
 
+    auto breakpoints = emulator->getDebugger()->memoryBreakpoints;
+    auto breaks_instr = emulator->getDebugger()->instructionBreakpoints;
+    auto breaks_addr = emulator->getDebugger()->addressBreakpoints;
+    for(auto brk : breakpoints){
+        ImGui::Text("0x%x [%c%c]", brk.addr, brk.r ? 'R' : '.', brk.w ? 'W' : '.');
+    }
+
+    ImGui::Separator();
+    for(auto brk : breaks_addr){
+        ImGui::Text("Address breakpoint: 0x%x", brk);
+    }
+
+    ImGui::Separator();
+    for(auto brk : breaks_instr){
+        ImGui::Text("cb: %i, op: %x", brk.cb, brk.op);
+    }
 }
 
 /*
