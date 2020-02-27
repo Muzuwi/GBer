@@ -67,14 +67,14 @@ bool MBC3::handleWriteMBC(uint16_t address, uint8_t byte) {
             //  RAM Bank Number
             if(byte != mountedBankNumberRAM){
                 currentBankingMode = RAM_BANK;
-                debugger->emuLog("MBC3/ Remounted flash to " + std::to_string(byte) + ", from " + std::to_string(mountedBankNumberRAM));
+//                debugger->emuLog("MBC3/ Remounted flash to " + std::to_string(byte) + ", from " + std::to_string(mountedBankNumberRAM));
                 mountedBankNumberRAM = byte;
                 assert(romBankCount >= mountedBankNumberRAM);
                 memory->insert(memory->getFlashBasePointer(), 0xA000, 0x2000, 0x2000*mountedBankNumberRAM, this->flashSize);
             }
         } else if(byte >= 0x8 && byte <= 0xC && extRAMEnabled){
             //  RTC Registers
-            debugger->emuLog("Writing RTC");
+//            debugger->emuLog("Writing RTC");
             currentBankingMode = RTC_BANK;
         }
         return false;
@@ -103,4 +103,6 @@ void MBC3::mountBanks() {
 
 MBC3::MBC3(MBCFlags config) {
     this->flags = config;
+    mountedBankNumberROM = 0;
+    mountedBankNumberRAM = 0;
 }

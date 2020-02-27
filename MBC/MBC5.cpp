@@ -66,7 +66,7 @@ bool MBC5::handleWriteMBC(uint16_t address, uint8_t byte) {
     if(address >= 0x4000 && address <= 0x5FFF){
         //  RAM Bank Number
         if(extRamBankCount > 0 && byte != mountedBankNumberRAM && (byte >= 0 && byte <= 0x0F)){
-            debugger->emuLog("MBC5/ Remounted flash to " + std::to_string(byte) + ", from " + std::to_string(mountedBankNumberRAM));
+//            debugger->emuLog("MBC5/ Remounted flash to " + std::to_string(byte) + ", from " + std::to_string(mountedBankNumberRAM));
             mountedBankNumberRAM = byte;
             assert(romBankCount >= mountedBankNumberRAM);
             memory->insert(memory->getFlashBasePointer(), 0xA000, 0x2000, 0x2000*mountedBankNumberRAM, this->flashSize);
