@@ -65,6 +65,13 @@ uint8_t RAM::read(uint16_t address){
         }
     }
 
+    //  OAM inaccessible outside of blanking periods
+    if(address >= 0xFE00 && address < 0xFEA0){
+        if(!(emulator->getPPU()->getPPUMode() == PPU_MODE::VBLANK || emulator->getPPU()->getPPUMode() == PPU_MODE::HBLANK)){
+            return 0xFF;
+        }
+    }
+
     if(address > 0xFFFF || address < 0x0 || (address >= 0xFF4C && address < 0xFF80) || (address >= 0xFEA0 && address < 0xFF00) ){
         // Most likely unspecified
         //Debug::emuLog("Reading from undefined address " + Math::decHex(address), Debug::LEVEL::ERR);
