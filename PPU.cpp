@@ -179,7 +179,9 @@ inline void PPU::fetchCurrentLineBackground(uint8_t *pixels, uint8_t *raw){
 
         //  Create a buffer to store tile line pixels
         const size_t bufferSize = bound - offset;
-        uint8_t* lineBuffer = new uint8_t[bufferSize];
+        uint8_t lineBuffer[32];
+        assert(bufferSize < 32);
+
         //  Get line pixels
         getRawTileData(tileID,spriteLine, lineBuffer, bufferSize, offset, bound);
         //  Fill the main line buffer with the pixels
@@ -190,7 +192,6 @@ inline void PPU::fetchCurrentLineBackground(uint8_t *pixels, uint8_t *raw){
             raw[x] = lineBuffer[pixel];
             x++;
         }
-        delete[] lineBuffer;
     }
 }
 
@@ -207,19 +208,17 @@ inline void PPU::fetchCurrentLineWindow(uint8_t *pixels, uint8_t *raw){
     unsigned int x = wx - 7, tileNumber = 0;
     while(x < 160){
         uint8_t tileID = emulator->getMemory()->peek(lcdc.windowTileMap.lower + ((drawingLine)/8)*0x20 + tileNumber);
-        uint8_t* lineBuffer = new uint8_t[8];
+        uint8_t lineBuffer[8];
         getRawTileData(tileID, drawingLine%8, lineBuffer, 8, 0, 8);
         for(int pixel = 0; pixel < 8; pixel++) {
             pixels[x] = getTilePalleteData(lineBuffer[pixel]);
             raw[x] = lineBuffer[pixel];
             x++;
             if(x == 160) {
-                delete[] lineBuffer;
                 return;
             }
         }
         tileNumber++;
-        delete[] lineBuffer;
     }
 }
 
@@ -324,7 +323,9 @@ inline void PPU::fetchCurrentLineSprite(uint8_t *pixels, const uint8_t *raw){
         unsigned int spriteLine = std::abs(ly - (entry.posY - 16));
 
         const size_t bufferSize = tileEndX - tileStartX;
-        uint8_t* lineBuffer = new uint8_t[bufferSize];
+        uint8_t lineBuffer[32];
+        assert(bufferSize < 32);
+
         //  Get tile data
         if(drawingSecond){
             getRawTileData(entry.patternNumber+1,spriteLine%8,lineBuffer,bufferSize,tileStartX,tileEndX,entry.xFlip,entry.yFlip,0x8000);
@@ -349,9 +350,6 @@ inline void PPU::fetchCurrentLineSprite(uint8_t *pixels, const uint8_t *raw){
 
             x++;
         }
-
-        delete[] lineBuffer;
-
     }
 }
 
@@ -364,15 +362,15 @@ inline void PPU::drawCurrentLine(){
             wy = emulator->getMemory()->peek(WY),
             ly = emulator->getMemory()->peek(LY);
 
-    //  Allocate line buffers
+    //  Line buffers
     //  Stores pixel data after applying pallete swapping
-    uint8_t* linePixels = new uint8_t[GAMEBOY_SCREEN_WIDTH] {0};
+    uint8_t linePixels[GAMEBOY_SCREEN_WIDTH] {0};
 
-    //  Allocate framebuffer and create SDL texture to store the framebuffer
-    uint32_t* lineFramebufferData = new uint32_t[GAMEBOY_SCREEN_WIDTH] {0};
+    //  Framebuffer and create SDL texture to store the framebuffer
+    uint32_t lineFramebufferData[GAMEBOY_SCREEN_WIDTH] {0};
 
     //  Raw pixel number buffer, for sprite priority to work correctly
-    uint8_t* rawBgWindow = new uint8_t[GAMEBOY_SCREEN_WIDTH] {0};
+    uint8_t rawBgWindow[GAMEBOY_SCREEN_WIDTH] {0};
 
     //  If window/background is enabled
     if(lcdc.bgWindowDisplayPriority) {
@@ -419,11 +417,6 @@ inline void PPU::drawCurrentLine(){
 
     //  Upload framebuffer to Display module
     emulator->getDisplay()->appendBufferedLine(lineFramebufferData, GAMEBOY_SCREEN_WIDTH, ly);
-
-    //  Cleanup
-    delete[] linePixels;
-    delete[] lineFramebufferData;
-    delete[] rawBgWindow;
 }
 
 inline void PPU::getRawTileData(uint8_t tileNumber,
