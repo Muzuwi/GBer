@@ -1,5 +1,5 @@
 #pragma once
-#include <cassert>
+#include <cstdint>
 #include "MBC/BasicMBC.hpp"
 
 /*
@@ -7,17 +7,21 @@
  */
 class MBC5 : public virtual BasicMBC{
     //  Is the flash enabled?
-    bool extRAMEnabled = false;
+    bool extRAMEnabled;
     //  Mounted ROM/RAM bank
-    unsigned int mountedBankNumberROM = 0, mountedBankNumberRAM = 0;
+    unsigned int mountedBankNumberROM, mountedBankNumberAUX;
+
+    size_t getMountedBankROM() const;
+    size_t getMountedBankRAM() const;
+
 public:
-    MBC5(MBCFlags config);
+    MBC_CONSTRUCTOR(MBC5) { }
 
     bool handleWriteMBC(uint16_t address, uint8_t byte) override;
 
     uint8_t handleReadMBC(uint16_t address) override;
 
-    bool flashEnabled() override;
+    bool flashEnabled() override { return extRAMEnabled; };
 
     void mountBanks() override;
 };

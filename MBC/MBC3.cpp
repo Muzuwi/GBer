@@ -1,35 +1,45 @@
-#include "MBC/BasicMBC.hpp"
 #include "MBC/MBC3.hpp"
-#include "Headers/RAM.hpp"
 #include "Headers/Debugger.hpp"
 
-bool MBC3::handleWriteMBC(uint16_t address, uint8_t byte) {
+uint8_t MBC3::handleReadMBC(uint16_t address) {
+    if (address <= 0x3fff) {
+        return rom[address];
+    } else if (address <= 0x7fff) {
+        return rom[getMountedBankROM()*0x4000 + (address - 0x4000)];
+    } else if (address >= 0xA000 && address <= 0xBFFF) {
+        if (!extRAMEnabled)
+            return 0xFF;
 
-    //  Write changes applied to the currently mounted bank in storage
-    if(address >= 0xA000 && address <= 0xBFFF){
-        //  If RAM/RTC writing is enabled
-        if(extRAMEnabled){
-            //  If in RAM bank mode
-            if(currentBankingMode == RAM_BANK){
-                auto flash = memory->getFlashBasePointer();
-                //  If no other banks are present
-                if(extRamBankCount < 4) flash[(address - 0xA000)] = byte;
-                //  Otherwise change at the proper bank location
-                else flash[(address - 0xA000) + 0x2000*mountedBankNumberRAM] = byte;
-                return true;
-            } else {
-                //  TODO:
-                return true;
-            }
-        } else{
-            return false;
+        if (currentBankingMode == RAM_BANK) {
+            return flash[(address - 0xA000) + 0x2000 * getMountedBankRAM()];
+        } else if (currentBankingMode == RTC_BANK) {
+            //  TODO:
+            return 0xFF;
         }
     }
 
+    ASSERT_NOT_REACHED("Invalid address passed to read MBC");
+}
 
+bool MBC3::handleWriteMBC(uint16_t address, uint8_t byte) {
+    //  Write changes applied to the currently mounted bank in storage
+    if (address >= 0xA000 && address <= 0xBFFF){
+        if (currentBankingMode == RAM_BANK) {
+            if (flashBankCount == 1) {
+                flash.at((address - 0xA000)) = byte;
+            } else {
+                flash.at((address - 0xA000) + 0x2000 * getMountedBankRAM()) = byte;
+            }
+        } else {
+            //  TODO: RTC Write
+            ASSERT_NOT_REACHED("RTC unimplemented");
+        }
 
-    //  Enabling extRAM and rtc registers
-    if(address >= 0x0000 && address <= 0x1FFF){
+        return false;
+    }
+
+    //  Enabling flash and rtc registers
+    if (address >= 0x0000 && address <= 0x1FFF){
         if(byte == 0x0A){
             extRAMEnabled = true;
         } else if(byte == 0){
@@ -39,70 +49,48 @@ bool MBC3::handleWriteMBC(uint16_t address, uint8_t byte) {
     }
 
     //  Remounting rom bank
-    if(address >= 0x2000 && address <= 0x3FFF){
-        //  Full 7 bytes used
-        //  Aditionally, values larger than the amount of banks in the rom
-        //  overflow.
-        uint8_t prev = mountedBankNumberROM;
-        byte = (byte % this->romBankCount) & 0b01111111;
-        //std::cout << "MBC3/ hookWriteMBC(" << Math::decHex(address) << ", " << Math::decHex(byte,2) << ")\n";
-
-        uint8_t bankNumber = 0;
-        if(byte == 0) bankNumber = 1;
-        else bankNumber = byte;
-
-        mountedBankNumberROM = (bankNumber) % this->romBankCount;
-        //  Switch banks only if necessary
-        if(prev != mountedBankNumberROM){
-            //debugger->emuLog("MBC3/ Switching to bank " + std::to_string(mountedBankNumberROM));
-            assert(romBankCount >= mountedBankNumberROM);
-            memory->insert(memory->getROMBasePointer(), 0x4000, 0x4000, 0x4000*mountedBankNumberROM, memory->getSizeROM());
-        }
+    if (address >= 0x2000 && address <= 0x3FFF){
+        mountedBankNumberROM = byte & 0b01111111;
         return false;
     }
 
-    //  RAM Bank
-    if(address >= 0x4000 && address <= 0x5FFF){
-        if(byte >= 0 && byte <= 0x3 && extRAMEnabled){
-            //  RAM Bank Number
-            if(byte != mountedBankNumberRAM){
-                currentBankingMode = RAM_BANK;
-//                debugger->emuLog("MBC3/ Remounted flash to " + std::to_string(byte) + ", from " + std::to_string(mountedBankNumberRAM));
-                mountedBankNumberRAM = byte;
-                assert(romBankCount >= mountedBankNumberRAM);
-                memory->insert(memory->getFlashBasePointer(), 0xA000, 0x2000, 0x2000*mountedBankNumberRAM, this->flashSize);
-            }
-        } else if(byte >= 0x8 && byte <= 0xC && extRAMEnabled){
-            //  RTC Registers
-//            debugger->emuLog("Writing RTC");
+    //   RAM Bank
+    if (address >= 0x4000 && address <= 0x5FFF){
+        if (byte <= 0x3)
+            currentBankingMode = RAM_BANK;
+        else if (byte >= 0x8 && byte <= 0xC)
             currentBankingMode = RTC_BANK;
-        }
+
+        mountedBankNumberAUX = byte;
         return false;
     }
 
-    return true;
-}
+    //  Latch clock data
+    if (address >= 0x6000 && address <= 0x7fff) {
+        //  TODO:
+        return false;
+    }
 
-uint8_t MBC3::handleReadMBC(uint16_t address) {
-    return 0xFF;
-}
-
-bool MBC3::flashEnabled() {
-    return extRAMEnabled;
+    ASSERT_NOT_REACHED("Failed to process write MBC3");
 }
 
 void MBC3::mountBanks() {
-    debugger->emuLog("Mounting ROM banks 0 and 1...");
-    //  Mount stuff
-    //  Mount banks 0 and 1 into memory
-    memory->insert(memory->getROMBasePointer(), 0x0, 0x4000, 0, memory->getSizeROM());
-    memory->insert(memory->getROMBasePointer(), 0x4000, 0x4000, 0x4000, memory->getSizeROM());
-    debugger->emuLog("Mounting ROM banks 0 and 1 completed");
-
+    mountedBankNumberROM = 1;
+    mountedBankNumberAUX = 0;
+    extRAMEnabled = false;
+    currentBankingMode = RAM_BANK;
 }
 
-MBC3::MBC3(MBCFlags config) {
-    this->flags = config;
-    mountedBankNumberROM = 0;
-    mountedBankNumberRAM = 0;
+inline size_t MBC3::getMountedBankROM() const {
+    uint8_t bankNumber = mountedBankNumberROM;
+    if(bankNumber == 0) bankNumber = 1;
+    bankNumber %= romBankCount;
+    return bankNumber;
+}
+
+inline size_t MBC3::getMountedBankRAM() const {
+    if (currentBankingMode == RAM_BANK)
+        return mountedBankNumberAUX;
+    else
+        return 0; //  FIXME: ???
 }

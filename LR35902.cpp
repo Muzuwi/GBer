@@ -818,6 +818,12 @@ void LR35902::reload(){
 *  Decodes and executes the instruction given by the arguments
 */
 inline void LR35902::decodeInstruction(uint8_t prefix, uint8_t op, uint8_t immediate){
+    if(op == 0xFF && Registers.PC == 0x38) {
+        emulator->getDebugger()->emuLog("RST 38 loop detected, halting emulation!", LOGLEVEL::ERR);
+        emulator->triggerBreak("RST 38 loop");
+        return;
+    }
+
     //  Should the PC not be incremented after running?
     //  For branching instructions
     bool preservePC = false;
@@ -920,12 +926,12 @@ int LR35902::cycle(){
     //  Turn off unused bits of register F
     Registers.F = Registers.F & 0xF0;
 
-    std::cout << "PC: " + Utils::decHex(Registers.PC) + "  AF:" + Utils::decHex(Registers.A * 0x100 + Registers.F) + "  BC:" + Utils::decHex(readBC()) + "  DE:" + Utils::decHex(readDE()) + "  HL:" + Utils::decHex(readHL()) + "  SP:" + Utils::decHex(Registers.SP) + "\n";
+//    std::cout << "PC: " + Utils::decHex(Registers.PC) + "  AF:" + Utils::decHex(Registers.A * 0x100 + Registers.F) + "  BC:" + Utils::decHex(readBC()) + "  DE:" + Utils::decHex(readDE()) + "  HL:" + Utils::decHex(readHL()) + "  SP:" + Utils::decHex(Registers.SP) + "\n";
 
     //  Fetch instruction
-    uint8_t prefix = memory[Registers.PC],
-            opcode = memory[Registers.PC+1],
-            immediate = memory[Registers.PC + 2];
+    uint8_t prefix = emulator->getMemory()->read(Registers.PC),
+            opcode = emulator->getMemory()->read(Registers.PC+1),
+            immediate = emulator->getMemory()->read(Registers.PC+2);
 
     //  Decode current instruction
     decodeInstruction(prefix, opcode, immediate);
@@ -945,9 +951,9 @@ int LR35902::cycle(){
 
     //  Debug mode features
     //  Peek at the next instruction, and activate breakpoints
-    prefix = memory[Registers.PC],
-    opcode = memory[Registers.PC+1],
-    immediate = memory[Registers.PC + 2];
+    prefix = emulator->getMemory()->read(Registers.PC),
+    opcode = emulator->getMemory()->read(Registers.PC+1),
+    immediate = emulator->getMemory()->read(Registers.PC+2);
     if (emulator->getConfig()->isDebug()) {
         emulator->getDebugger()->handleAddressBreakpoint(Registers.PC);
         if(prefix != 0xCB){

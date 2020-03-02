@@ -1,5 +1,4 @@
 #include "MBC/ROM.hpp"
-#include "Headers/RAM.hpp"
 
 /*
  *  Dummy MBC for ROM banking
@@ -10,13 +9,5 @@ bool ROM::handleWriteMBC(uint16_t address, uint8_t byte) {
 }
 
 uint8_t ROM::handleReadMBC(uint16_t address) {
-    return memory->getBaseMemoryPointer()[address];
-}
-
-bool ROM::flashEnabled() {
-    return false;
-}
-
-void ROM::mountBanks() {
-
+    return rom[address];
 }

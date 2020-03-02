@@ -2,36 +2,12 @@
 #include "Headers/RAM.hpp"
 #include "Headers/Debugger.hpp"
 
-//  Binds the MBC object to a memory object and a debug object
-void BasicMBC::bindMBC(RAM* newMem, Debugger* newDebug){
-    memory = newMem;
-    debugger = newDebug;
-}
-
-void BasicMBC::setFlashBankCount(size_t count) {
-    extRamBankCount = count;
-}
-
-void BasicMBC::setROMBankCount(size_t count) {
-    romBankCount = count;
-}
-
-size_t BasicMBC::getFlashBankCount() {
-    return extRamBankCount;
-}
-
-size_t BasicMBC::getROMBankCount() {
-    return romBankCount;
-}
-
-void BasicMBC::setFlashSize(size_t size) {
-    flashSize = size;
-}
-
-size_t BasicMBC::getFlashSize() {
-    return flashSize;
-}
-
-bool BasicMBC::supports(MBCFlags flags) {
-    return (this->flags & flags);
+BasicMBC::BasicMBC(MBCFlags fl, std::vector<uint8_t> &rom_vec, std::vector<uint8_t> &flash_vec, Debugger &debug_ref,
+                   size_t romCount, size_t flashCount) : debugger(debug_ref), rom(rom_vec), flash(flash_vec)
+{
+    flags = fl;
+    flashBankCount = flashCount;
+    romBankCount = romCount;
+    flashSize = flashBankCount * 0x2000;
+    romSize = romBankCount * 0x4000;
 }

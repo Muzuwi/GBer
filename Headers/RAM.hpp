@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <map>
+#include <memory>
 #include "Headers/GameboyDefinitions.hpp"
 #include "Headers/Utils.hpp"
 #include "MBC/BasicMBC.hpp"
@@ -14,23 +15,17 @@ class RAM{
     Emulator* emulator;
 
     //  RAM storage
-    std::vector<uint8_t> memory;
-    std::vector<uint8_t> flash;
+    std::vector<uint8_t> memory { };
+    std::vector<uint8_t> flash { };
 
     //  ROM file
-    std::vector<uint8_t> romFile;
+    std::vector<uint8_t> romFile { };
 
-    //  Pointer to currently used MBC object
-    BasicMBC* mbc;
-
-    //  Size of external memory bank
-    size_t externalFlashSize, externalFlashBankCount;
+    //  Currently used MBC object
+    std::unique_ptr<BasicMBC> mbc;
 
     //  MBC Type that is currently in use
     MBC_Type mbcType;
-
-    //  Is flash present?
-    bool flashPresent = false;
 
     //  It's 2019 and there's still no way to get a string from an enum
     std::map<MBC_Type, std::string> controllerTypeLabel = {

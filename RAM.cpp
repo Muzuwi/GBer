@@ -16,6 +16,11 @@ void RAM::bind(Emulator* newEmulator){
  *  Read a byte from memory
  */
 uint8_t RAM::read(uint16_t address){
+    //  Breakpoints
+    if (emulator->getConfig()->isDebug()){
+        emulator->getDebugger()->handleMemoryBreakpoint(MemoryBreakpoint(address, true, false, false));
+    }
+
     //  If an OAM transfer is in progress
     if(!CurrentOAMTransfer.completed){
         if(address < 0xFF80 || address > 0xFFFE){
@@ -26,17 +31,9 @@ uint8_t RAM::read(uint16_t address){
         }
     }
 
-    //  Breakpoints
-    if(emulator->getConfig()->isDebug()){
-        emulator->getDebugger()->handleMemoryBreakpoint(MemoryBreakpoint(address, true, false, false));
-    }
 
-    //  When extRAM is disabled, any reads from that area should return 0xFF
-    if(address >= 0xA000 && address <= 0xBFFF && mbc->supports(MBC_Flash)){
-        if(!mbc->flashEnabled()) return 0xFF;
-    }
-
-    if(address == P1){
+    //  Joypad Reg
+    if (address == P1){
         //  Get JoypadState
         auto JoypadState = emulator->getDisplay()->getJoypad();
 
@@ -65,20 +62,54 @@ uint8_t RAM::read(uint16_t address){
         }
     }
 
+    //  IE reg
+    if (address == IE) {
+        return memory[address];
+    }
+
+    //  ROM/RAM accesses go through the MBC
+    if (address <= 0x7fff || (address >= 0xA000 && address <= 0xBFFF) ) {
+        uint8_t byte = mbc->handleReadMBC(address);
+//        emulator->getDebugger()->emuLog("MBC says: " + Utils::decHex(byte,2));
+        return byte;
+    }
+
     //  OAM inaccessible outside of blanking periods
-    if(address >= 0xFE00 && address < 0xFEA0){
+    if (address >= 0xFE00 && address < 0xFEA0){
         if(!(emulator->getPPU()->getPPUMode() == PPU_MODE::VBLANK || emulator->getPPU()->getPPUMode() == PPU_MODE::HBLANK)){
             return 0xFF;
+        } else {
+            return memory[address];
         }
     }
 
-    if(address > 0xFFFF || address < 0x0 || (address >= 0xFF4C && address < 0xFF80) || (address >= 0xFEA0 && address < 0xFF00) ){
-        // Most likely unspecified
-        //Debug::emuLog("Reading from undefined address " + Math::decHex(address), Debug::LEVEL::ERR);
-        return 0xFF;
-    }else{
+    //  VRAM
+    if (address >= 0x8000 && address <= 0x9fff) {
         return memory[address];
     }
+
+    //  WRAM
+    if (address >= 0xC000 && address <= 0xDFFF) {
+        return memory[address];
+    }
+
+    //  Echo RAM
+    if (address >= 0xE000 && address <= 0xFDFF) {
+        return memory[address];
+    }
+
+    //  IO Registers
+    if (address >= 0xFF00 && address <= 0xFFFE) {
+        return memory[address];
+    }
+
+    // Most likely unspecified
+    if ((address >= 0xFF4C && address < 0xFF80) || (address >= 0xFEA0 && address < 0xFF00) ){
+        return 0xFF;
+    }
+
+    emulator->getDebugger()->emuLog("Read failed to redirect! " + Utils::decHex(address));
+    assert(false);
 }
 
 /*
@@ -99,91 +130,130 @@ void RAM::poke(uint16_t address, uint8_t value){
  *  Write a byte into memory
  */
 bool RAM::write(uint16_t address, uint8_t byte){
+    //  Breakpoints
+    if(emulator->getConfig()->isDebug()){
+        emulator->getDebugger()->handleMemoryBreakpoint(MemoryBreakpoint(address, false, true, true, byte));
+    }
+
     //  If an OAM transfer is in progress
     if(!CurrentOAMTransfer.completed){
         if(address < 0xFF80 || address > 0xFFFE){
             emulator->getDebugger()->emuLog(
                     "Invalid memory access, tried writing to " + Utils::decHex(address) + ", which is not HRAM, during an OAM transfer",
                     LOGLEVEL::WARN);
+//            memory[address] = byte;
             return false;
         }
     }
 
-    //  Breakpoints
-    if(emulator->getConfig()->isDebug()){
-        emulator->getDebugger()->handleMemoryBreakpoint(MemoryBreakpoint(address, false, true, true, byte));
+    //  Writing to MBC registers
+    if (address <= 0x7FFF) {
+        return mbc->handleWriteMBC(address, byte);
     }
 
-    //  Check if MBC allows writing to this area
-    bool writable = mbc->handleWriteMBC(address, byte);
+    //  Writing to flash
+    if (address >= 0xA000 && address <= 0xBFFF) {
+        return mbc->handleWriteMBC(address, byte);
+    }
 
+    //  VRAM
+    if (address >= 0x8000 && address <= 0x9FFF) {
+        memory[address] = byte;
+        return false;
+    }
+
+    //  OAM
+    if (address >= 0xFE00 && address <= 0xFE9F) {
+        memory[address] = byte;
+        return false;
+    }
+
+    //  Undefined regions
+    if ((address >= 0xFF4C && address < 0xFF80) ||
+        (address >= 0xFEA0 && address < 0xFF00)) {
+        return false;
+    }
+
+    //  Writing to Echo RAM
+    if ((address >= 0xC000) && (address <= 0xDDFF)) {
+        memory[address] = byte;
+        memory[address + 0x2000] = byte;
+        return false;
+    }
+    else if ((address >= 0xE000) && (address <= 0xFDFF)) {
+        memory[address] = byte;
+        memory[address - 0x2000] = byte;
+        return false;
+    }
+
+    //  Writing to the rest of WRAM (outside of Echo RAM)
+    if (address >= 0xDE00 && address <= 0xDFFF) {
+        memory[address] = byte;
+        return false;
+    }
+
+
+    //  Registers, TODO: Aggregate all the IO regs somewhere else
+    if (address == DIV || address == LY) {
+        return false;
+    }
+    if (address == DMA) {
+        this->beginTransferOAM(byte << 8);
+        return false;
+    }
+    if (address == SCTRL && byte == 0x81) {
+        std::cout << read(SDATA);
+        return false;
+    }
+    if (address == TAC) {
+        switch (byte & 3) {
+            case 0:
+                emulator->getCPU()->setTimerFrequency(emulator->getCPU()->getFrequencyCPU() / 1024.0);
+                break;
+            case 1:
+                emulator->getCPU()->setTimerFrequency(emulator->getCPU()->getFrequencyCPU() / 16.0);
+                break;
+            case 2:
+                emulator->getCPU()->setTimerFrequency(emulator->getCPU()->getFrequencyCPU() / 64.0);
+                break;
+            case 3:
+                emulator->getCPU()->setTimerFrequency(emulator->getCPU()->getFrequencyCPU() / 256.0);
+                break;
+
+        }
+        return false;
+    }
     if(address == LCDC && (byte & 0x80) && !(memory[LCDC] & 0x80) ){
         emulator->getDisplay()->clearWindow();
         memory[LY] = 0;
         emulator->getPPU()->setModePPU(HBLANK);
         emulator->getPPU()->clearCycles();
         memory[STAT] = (memory[STAT] & 0b11111100) | 0b00;
-    } else if(address == LCDC && !(byte & 0x80) && (memory[LCDC] & 0x80)){
+    }
+    else if(address == LCDC && !(byte & 0x80) && (memory[LCDC] & 0x80)){
         emulator->getDisplay()->clearWindow();
         memory[LY] = 0;
         emulator->getPPU()->setModePPU(HBLANK);
         emulator->getPPU()->clearCycles();
         memory[STAT] = (memory[STAT] & 0b11111100) | 0b00;
     }
-
-    //  Write if possible
-    if(writable) {
-        if (address > 0xFFFF || address < 0x0) {
-            emulator->getDebugger()->emuLog(
-                    "Failed writing " + Utils::decHex(byte) + " to invalid address " + Utils::decHex(address),
-                    LOGLEVEL::ERR);
-            return false;
-        } else if ((address >= 0xFF4C && address < 0xFF80) ||
-                   (address >= 0xFEA0 && address < 0xFF00)) {
-            return false;
-        } else if (address >= 0x0 && address <= 0x7FFF) {
-            //  Tried writing to ROM
-            return false;
-        } else if ((address >= 0xC000) && (address <= 0xDE00)) {        //  Echo RAM
-            memory[address] = byte;
-            memory[address + 0x2000] = byte;
-        } else if ((address >= 0xE000) && (address <= 0xFE00)) {
-            memory[address] = byte;
-            memory[address - 0x2000] = byte;
-        } else if (address == DIV || address == LY) {
-            //  Read only
-            return false;
-        } else {
-            memory[address] = byte;
-        }
-
-        if (address == DMA) {
-            this->beginTransferOAM(byte << 8);
-        }
-
-        if (address == SCTRL && byte == 0x81) {
-            std::cout << read(SDATA);
-        }
-
-        if (address == TAC) {
-            switch (byte & 3) {
-                case 0:
-                    emulator->getCPU()->setTimerFrequency(emulator->getCPU()->getFrequencyCPU() / 1024.0);
-                    break;
-                case 1:
-                    emulator->getCPU()->setTimerFrequency(emulator->getCPU()->getFrequencyCPU() / 16.0);
-                    break;
-                case 2:
-                    emulator->getCPU()->setTimerFrequency(emulator->getCPU()->getFrequencyCPU() / 64.0);
-                    break;
-                case 3:
-                    emulator->getCPU()->setTimerFrequency(emulator->getCPU()->getFrequencyCPU() / 256.0);
-                    break;
-
-            }
-        }
+    if (address == IE) {
+        memory[address] = byte;
+        return false;
     }
-    return true;
+    //  FIXME: General catch-all
+    if (address >= 0xFF00 && address <= 0xFF7F) {
+        memory[address] = byte;
+        return false;
+    }
+
+    //  HRAM
+    if (address >= 0xFF80 && address <= 0xFFFE){
+        memory[address] = byte;
+        return false;
+    }
+
+    ASSERT_NOT_REACHED("Failed to redirect write RAM");
 }
 
 /*
@@ -243,7 +313,8 @@ void RAM::decodeHeader(){
     //  The rom doesn't have a header
     if(romFile.size() < 0x150){
         Debug->emuLog("Malformed ROM detected! Invalid size (expected romSize >= 0x150, got " + std::to_string(romFile.size()) + ")", LOGLEVEL::ERR);
-        assert(romFile.size() >= 0x150);
+        emulator->die("Corrupted ROM");
+        return;
     }
 
     std::string title;
@@ -255,13 +326,9 @@ void RAM::decodeHeader(){
     Debug->emuLog("Title: " + title);
 
     std::string type;
-    if(romFile[0x0143] == 0xC0){
-        type = "GBC Only";
-    }else if(romFile[0x0143] == 0x80){
-        type = "GB/GBC";
-    }else{
-        type = "Unknown";
-    }
+    if(romFile[0x0143] == 0xC0) type = "GBC Only";
+    else if(romFile[0x0143] == 0x80) type = "GB/GBC";
+    else type = "Unknown";
     Debug->emuLog("Console type: " + type);
 
 
@@ -269,12 +336,30 @@ void RAM::decodeHeader(){
     mbcType = (MBC_Type)romFile[0x0147];
     Debug->emuLog("MBC Type: " + controllerTypeLabel[mbcType]);
 
+    size_t romBankCount = (2 << (romFile[0x0148]));
+    Debug->emuLog("ROM Size: " + std::to_string(romBankCount) + " banks, " + std::to_string(32*(1 << romFile[0x0148])) + "kb");
+    Debug->emuLog("ROM Version: " + std::to_string(romFile[0x014C]));
+
+    unsigned int ramSize = 0;
+    switch(romFile[0x0149]){
+        case 0: ramSize = 0; break;
+        case 1: ramSize = 2048; break;
+        case 2: ramSize = 8192; break;
+        case 3: ramSize = 32768; break;
+        case 4: ramSize = 131072; break;
+        case 5: ramSize = 65536; break;
+        default: break;
+    }
+    size_t flashBankCount = ramSize / 8192;
+    Debug->emuLog("ExtRAM Size: " + ((ramSize == 0)
+                                    ? "None"
+                                    : std::to_string(ramSize) + " bytes, " + std::to_string(flashBankCount) + " banks."));
+
     //  Create an MBC object
     switch(mbcType){
         case ROM: {
             //  Bind a dummy MBC
-            mbc = new class ROM();
-            mbc->bindMBC(this, emulator->getDebugger());
+            mbc = std::make_unique<class ROM>((MBCFlags)0, romFile, flash, *Debug, romBankCount, 0);
             break;
         }
         case MBC1:
@@ -284,8 +369,7 @@ void RAM::decodeHeader(){
             if(mbcType == MBC1_RAM_BAT) flags |= MBC_Battery;
             if(mbcType == MBC1_RAM || mbcType == MBC1_RAM_BAT) flags |= MBC_Flash;
 
-            mbc = new class MBC1(flags);
-            mbc->bindMBC(this, emulator->getDebugger());
+            mbc = std::make_unique<class MBC1>(flags, romFile, flash, *emulator->getDebugger(), romBankCount, flashBankCount);
             break;
         }
         case MBC3:
@@ -298,8 +382,7 @@ void RAM::decodeHeader(){
             if(mbcType == MBC3_RAM || mbcType == MBC3_RAM_BAT || mbcType == MBC3_TIM_BAT) flags |= MBC_Flash;
             if(mbcType == MBC3_TIM_BAT || mbcType == MBC3_RAM_TIM_BAT) flags |= MBC_Timer;
 
-            mbc = new class MBC3(flags);
-            mbc->bindMBC(this, emulator->getDebugger());
+            mbc = std::make_unique<class MBC3>(flags, romFile, flash, *emulator->getDebugger(), romBankCount, flashBankCount);
             break;
         }
         case MBC5:
@@ -313,68 +396,26 @@ void RAM::decodeHeader(){
             if(mbcType == MBC5_RAM_BAT || mbcType == MBC5_RAM_BAT_RUMBLE) flags |= MBC_Battery;
             if(mbcType == MBC5_RAM_BAT_RUMBLE || mbcType == MBC5_RAM_RUMBLE || mbcType == MBC5_RUMBLE) flags |= MBC_Rumble;
 
-            mbc = new class MBC5(flags);
-            mbc->bindMBC(this, emulator->getDebugger());
+            mbc = std::make_unique<class MBC5>(flags, romFile, flash, *emulator->getDebugger(), romBankCount, flashBankCount);
             break;
         }
         default:
             Debug->emuLog("Error creating an MBC object! Type not implemented", LOGLEVEL::ERR);
-            std::terminate();
+            emulator->die("Unimplemented MBC");
             break;
     }
 
     std::string features;
-    if(mbc->supports(MBC_MBC1)){
-        features += "MBC1 ";
-    } else if(mbc->supports(MBC_MBC2)){
-        features += "MBC2 ";
-    } else if(mbc->supports(MBC_MBC3)){
-        features += "MBC3 ";
-    } else if(mbc->supports(MBC_MBC5)){
-        features += "MBC5 ";
-    }
+    if(mbc->supports(MBC_MBC1)) features += "MBC1 ";
+    else if(mbc->supports(MBC_MBC2)) features += "MBC2 ";
+    else if(mbc->supports(MBC_MBC3)) features += "MBC3 ";
+    else if(mbc->supports(MBC_MBC5)) features += "MBC5 ";
 
-    if(mbc->supports(MBC_Flash)){
-        features += "Flash ";
-    }
-    if(mbc->supports(MBC_Timer)){
-        features += "Timer ";
-    }
-    if(mbc->supports(MBC_Battery)){
-        features += "Battery ";
-    }
-    if(mbc->supports(MBC_Rumble)){
-        features += "Rumble ";
-    }
+    if(mbc->supports(MBC_Flash)) features += "Flash ";
+    if(mbc->supports(MBC_Timer)) features += "Timer ";
+    if(mbc->supports(MBC_Battery)) features += "Battery ";
+    if(mbc->supports(MBC_Rumble)) features += "Rumble ";
     Debug->emuLog("MBC features: " + features);
-
-    Debug->emuLog("ROM Size: " + std::to_string(2 << (romFile[0x0148])) + " banks, " + std::to_string(32*(1 << romFile[0x0148])) + "kb");
-    Debug->emuLog("ROM Version: " + std::to_string(romFile[0x014C]));
-
-    mbc->setROMBankCount(2 << (romFile[0x0148]));
-
-    unsigned int ramSize = 0;
-    switch(romFile[0x0149]){
-        case 0: ramSize = 0; break;
-        case 1: ramSize = 2048; break;
-        case 2: ramSize = 8192; break;
-        case 3: ramSize = 32768; break;
-        case 4: ramSize = 131072; break;
-        case 5: ramSize = 65536; break;
-        default: break;
-    }
-
-    externalFlashBankCount = ramSize / 8192;
-    externalFlashSize = ramSize;
-
-    mbc->setFlashSize(externalFlashSize);
-    mbc->setFlashBankCount(externalFlashBankCount);
-
-    Debug->emuLog("ExtRAM Size: " + ((externalFlashSize == 0)
-                                    ? "None"
-                                    : std::to_string(externalFlashSize) + " kBytes, " + std::to_string(externalFlashSize/8192) + " banks."));
-
-    flashPresent = (externalFlashSize > 0);
 
     unsigned char sum = 0;
     for(int i = 0x0134; i <= 0x014C; i++){
@@ -416,24 +457,17 @@ void RAM::mountBanksRAM(){
         emulator->getDebugger()->emuLog(val);
         emulator->getDebugger()->emuLog(val2);
     }
+
     //  If an MBC is in use,
     //  Check if the flash is present on disk and load it
-    if(flashPresent){
-        if((mbcType != ROM) && Utils::exists(emulator->getConfig()->getSavename())){
+    if(mbc->supports(MBCFlags_::MBC_Flash)){
+        if(Utils::exists(emulator->getConfig()->getSavename())){
             emulator->getDebugger()->emuLog("Loading flash from save.");
             flash = Utils::loadFromFile(emulator->getConfig()->getSavename());
             if(flash.size() != mbc->getFlashSize()){
                 emulator->getDebugger()->emuLog("External flash size does not match header-specified Flash size! Skipping..", LOGLEVEL::ERR);
                 flash.clear();
                 flash.resize(mbc->getFlashSize());
-            }
-            emulator->getDebugger()->emuLog("Mounting Flash bank 0");
-            if(mbc->getFlashBankCount() < 4){
-                //  Directly insert the extRAM, no banking here
-                insert(flash, 0xA000, mbc->getFlashSize(), 0);
-            } else {
-                //  Only insert the first bank
-                insert(flash, 0xA000, 8192, 0);
             }
         } else {
             emulator->getDebugger()->emuLog("Save file does not exist.");
@@ -475,15 +509,12 @@ void RAM::mountBanksRAM(){
  *  Saves the contents of flash to disk
  */
 void RAM::unmountRAM(){
-    if(mbcType == ROM) return;
     if(mbc->getFlashSize() > 0){
         std::ofstream save;
         save.open(emulator->getConfig()->getSavename(), std::ios::binary);
         save.write((char*)&flash[0], mbc->getFlashSize());
         save.close();
     }
-    //  TODO: move this somewhere else?
-    delete mbc;
 }
 
 /*
@@ -530,21 +561,21 @@ size_t RAM::getSizeFlash() {
 }
 
 void RAM::beginTransferOAM(uint16_t source) {
-    if(emulator->getPPU()->getPPUMode() != PPU_MODE::VBLANK){
-        std::string mode;
-        switch(emulator->getPPU()->getPPUMode()){
-            case PPU_MODE::HBLANK:
-                mode = "HBlank";
-                break;
-            case PPU_MODE::OAM:
-                mode = "OAM";
-                break;
-            case PPU_MODE::PIXTX:
-                mode = "Pixel Transfer (wtf?)";
-                break;
-        }
-        emulator->getDebugger()->emuLog("Tried triggering DMA transfer from invalid PPU mode! (" + mode + ")", LOGLEVEL::WARN);
-    }
+//    if(emulator->getPPU()->getPPUMode() != PPU_MODE::VBLANK){
+//        std::string mode;
+//        switch(emulator->getPPU()->getPPUMode()){
+//            case PPU_MODE::HBLANK:
+//                mode = "HBlank";
+//                break;
+//            case PPU_MODE::OAM:
+//                mode = "OAM";
+//                break;
+//            case PPU_MODE::PIXTX:
+//                mode = "Pixel Transfer (wtf?)";
+//                break;
+//        }
+//        emulator->getDebugger()->emuLog("Tried triggering DMA transfer from invalid PPU mode! (" + mode + ")", LOGLEVEL::WARN);
+//    }
 
     if(!CurrentOAMTransfer.completed){
         emulator->getDebugger()->emuLog("Tried triggering an OAM transfer while a transfer was already in progress", LOGLEVEL::WARN);
@@ -564,7 +595,7 @@ void RAM::beginTransferOAM(uint16_t source) {
 /*
  *  Updates memory transfers, currently only OAM
  */
-void RAM::updateTransfers(unsigned int cycles) {
+void RAM::updateTransfers(size_t cycles) {
     if(CurrentOAMTransfer.completed) return;
     //  Increment internal cycle counter
     CurrentOAMTransfer.clockCounter += cycles;
