@@ -14,6 +14,9 @@
 
 #include "Headers/Structures.hpp"
 
+#define ASSERT_NOT_REACHED(message) assert(false && message)
+
+
 class Emulator;
 
 class Debugger{

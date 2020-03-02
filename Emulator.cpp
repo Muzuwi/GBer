@@ -225,3 +225,9 @@ void Emulator::triggerBreak(std::string message) {
 APU *Emulator::getAPU() {
     return &apu;
 }
+
+void Emulator::die(std::string reason) {
+    debug.emuLog("GBer has crashed!", LOGLEVEL::ERR);
+    debug.emuLog("Reason: " + reason, LOGLEVEL::ERR);
+    emuHalt = true;
+}

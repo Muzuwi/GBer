@@ -60,5 +60,7 @@ public:
 
     void triggerToggleDebugger();
 
+    void die(std::string reason);
+
     void requestChangeROM(std::string newROM);
 };
