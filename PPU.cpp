@@ -1,7 +1,6 @@
 #include "Headers/PPU.hpp"
 #include "Headers/Emulator.hpp"
 #include "Headers/RAM.hpp"
-#include "Headers/Display.hpp"
 
 //  Bind an emulator object to this module
 void PPU::bind(Emulator* newEmulator){
@@ -455,7 +454,7 @@ inline void PPU::getRawTileData(uint8_t tileNumber,
 
     auto memory = emulator->getMemory();
     unsigned int data1 = memory->peek(dataAddr + 2*line),
-            data2 = memory->peek(dataAddr + 2*line + 1);
+                 data2 = memory->peek(dataAddr + 2*line + 1);
 
     unsigned int x = 0;
     if(yflip){

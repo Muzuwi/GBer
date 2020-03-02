@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <cstddef>
 #include <cassert>
 #include "Headers/GameboyDefinitions.hpp"
 
